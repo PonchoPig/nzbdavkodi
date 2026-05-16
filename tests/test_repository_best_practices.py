@@ -155,3 +155,16 @@ def test_community_health_files_exist():
     ]
     for path in expected:
         assert path.exists(), "{} is missing".format(path)
+
+
+def test_github_pages_root_exposes_repository_zip_for_kodi_file_manager():
+    repo_xml = REPO_ROOT / "repo" / "repository.nzbdav" / "addon.xml"
+    repo_version = ET.parse(repo_xml).getroot().attrib["version"]
+    repo_zip_name = "repository.nzbdav-{}.zip".format(repo_version)
+
+    index_path = REPO_ROOT / "index.html"
+    assert index_path.exists()
+    index = index_path.read_text(encoding="utf-8")
+    assert 'href="{}"'.format(repo_zip_name) in index
+    assert (REPO_ROOT / repo_zip_name).exists()
+    assert (REPO_ROOT / ".nojekyll").exists()

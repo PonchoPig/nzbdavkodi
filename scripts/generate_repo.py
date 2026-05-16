@@ -94,6 +94,20 @@ def write_pages_index(output_dir, repo_version="1.0.0", addon_zip_names=None):
         f.write("")
 
 
+def write_pages_root(site_root, repo_zip_name):
+    """Write root GitHub Pages files so Kodi can browse the install zip."""
+    index_path = os.path.join(site_root, "index.html")
+    html = "<html><body>\n"
+    html += '<a href="{z}">{z}</a><br>\n'.format(z=repo_zip_name)
+    html += "</body></html>\n"
+    with open(index_path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    nojekyll_path = os.path.join(site_root, ".nojekyll")
+    with open(nojekyll_path, "w", encoding="utf-8") as f:
+        f.write("")
+
+
 def _copy_addon_artifacts(output_dir, addon_id, main_addon, addon_zip=None):
     if addon_zip:
         _version, dest_dir, zip_name = _copy_addon_zip(output_dir, addon_id, addon_zip)
@@ -166,6 +180,7 @@ def generate_repo(
     addon_zip=None,
     legacy_addon_zip_dir=None,
     repo_zip_alias_versions=None,
+    pages_root=None,
 ):
     os.makedirs(output_dir, exist_ok=True)
 
@@ -236,6 +251,11 @@ def generate_repo(
             output_dir, "repository.nzbdav-{}.zip".format(repo_version)
         )
         shutil.copy2(repo_zip_path, root_repo_zip)
+        repo_zip_name = os.path.basename(root_repo_zip)
+        if pages_root:
+            os.makedirs(pages_root, exist_ok=True)
+            shutil.copy2(repo_zip_path, os.path.join(pages_root, repo_zip_name))
+            write_pages_root(pages_root, repo_zip_name)
         if repo_zip_alias_versions is None:
             repo_zip_alias_versions = _REPOSITORY_ZIP_ALIAS_VERSIONS
         for alias_version in repo_zip_alias_versions:
@@ -293,9 +313,15 @@ if __name__ == "__main__":
         default=None,
         help="Directory of older addon release zips to keep published",
     )
+    parser.add_argument(
+        "--pages-root",
+        default=None,
+        help="Optional GitHub Pages root where the repository zip is browsable",
+    )
     args = parser.parse_args()
     generate_repo(
         output_dir=args.output_dir,
         addon_zip=args.addon_zip,
         legacy_addon_zip_dir=args.legacy_addon_zip_dir,
+        pages_root=args.pages_root,
     )

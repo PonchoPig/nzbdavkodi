@@ -60,7 +60,9 @@ devdocs
 .*
 -*
 !/.gitignore
+!/.nojekyll
 !.env.example
+!/repository.nzbdav-*.zip
 
 
 

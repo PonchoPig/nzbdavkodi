@@ -286,7 +286,7 @@ ship: test release
 
 # Generate Kodi repository in repo/zips for raw.githubusercontent.com hosting
 repo: release
-    python3 scripts/generate_repo.py --output-dir repo/zips
+    python3 scripts/generate_repo.py --output-dir repo/zips --pages-root .
 
 # Copy the repository zip to cwd for easy access
 repo-zip: repo
