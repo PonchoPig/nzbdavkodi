@@ -15,8 +15,14 @@ def test_addon_metadata_includes_repo_links_and_disclaimer():
     metadata = root.find("./extension[@point='xbmc.addon.metadata']")
 
     assert metadata is not None
-    assert metadata.findtext("source") == "https://github.com/PonchoPig/nzbdavkodi"
-    assert metadata.findtext("website") == "https://github.com/PonchoPig/nzbdavkodi"
+    assert (
+        metadata.findtext("source")
+        == "https://github.com/PonchoPig/PonchoPig.github.io"
+    )
+    assert (
+        metadata.findtext("website")
+        == "https://github.com/PonchoPig/PonchoPig.github.io"
+    )
     disclaimers = metadata.findall("disclaimer")
     assert len(disclaimers) >= 2
 

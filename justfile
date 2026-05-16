@@ -284,9 +284,13 @@ release:
 # Run tests then build release
 ship: test release
 
-# Generate Kodi repository in repo/zips for raw.githubusercontent.com hosting
+# Generate Kodi repository in repository.example layout:
+# - repo/zips/ hosts the raw GitHub repository feed
+# - repository.nzbdav-*.zip and index.html at repo root support PonchoPig.github.io
 repo: release
     python3 scripts/generate_repo.py --output-dir repo/zips
+    cp repo/zips/repository.nzbdav/repository.nzbdav-1.1.0.zip .
+    printf '%s\n' '<!DOCTYPE html>' '<a href="repository.nzbdav-1.1.0.zip">repository.nzbdav-1.1.0.zip</a>' > index.html
 
 # Copy the repository zip to cwd for easy access
 repo-zip: repo

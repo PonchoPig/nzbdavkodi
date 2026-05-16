@@ -98,8 +98,8 @@ Force-remux remains available for environments that need ffmpeg compatibility pa
 
 Install through the NZB-DAV repository for automatic updates:
 
-1. Install the repository zip from `https://raw.githubusercontent.com/PonchoPig/nzbdavkodi/main/repo/zips/repository.nzbdav/repository.nzbdav-1.1.0.zip`
-2. In Kodi: **Settings > Add-ons > Install from zip file** > select `repository.nzbdav-1.1.0.zip`
+1. In Kodi: **Settings > File Manager > Add source** > enter `https://PonchoPig.github.io/` > name it `nzbdav`
+2. **Settings > Add-ons > Install from zip file** > `nzbdav` > `repository.nzbdav-1.1.0.zip`
 3. **Settings > Add-ons > Install from repository > NZB-DAV Repository > Video add-ons > NZB-DAV**
 4. Future updates are installed automatically
 

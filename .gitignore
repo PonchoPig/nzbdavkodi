@@ -51,7 +51,9 @@ run-ralphforever.sh
 # Build zips (versioned)
 plugin.video.nzbdav-*.zip
 repository.nzbdav-*.zip
+/repository.nzbdav-*.zip
 !repo/zips/**/*.zip
+!/repository.nzbdav-*.zip
 
 # dev docs
 devdocs
