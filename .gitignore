@@ -51,6 +51,7 @@ run-ralphforever.sh
 # Build zips (versioned)
 plugin.video.nzbdav-*.zip
 repository.nzbdav-*.zip
+!repo/zips/**/*.zip
 
 # dev docs
 devdocs
@@ -71,3 +72,6 @@ gha-creds-*.json
 
 # Extreme functional test reports
 docs/reports/
+
+# Generated Kodi repository feed files are intentionally committed for raw GitHub hosting.
+!repo/zips/**/.nojekyll

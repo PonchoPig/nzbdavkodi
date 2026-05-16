@@ -98,8 +98,8 @@ Force-remux remains available for environments that need ffmpeg compatibility pa
 
 Install through the NZB-DAV repository for automatic updates:
 
-1. In Kodi: **Settings > File Manager > Add source** > enter `https://xbmc4lyfe.github.io/nzbdavkodi/` > name it `nzbdav`
-2. **Settings > Add-ons > Install from zip file** > `nzbdav` > `repository.nzbdav` > `repository.nzbdav-1.1.0.zip`
+1. Install the repository zip from `https://raw.githubusercontent.com/PonchoPig/nzbdavkodi/main/repo/zips/repository.nzbdav/repository.nzbdav-1.1.0.zip`
+2. In Kodi: **Settings > Add-ons > Install from zip file** > select `repository.nzbdav-1.1.0.zip`
 3. **Settings > Add-ons > Install from repository > NZB-DAV Repository > Video add-ons > NZB-DAV**
 4. Future updates are installed automatically
 
@@ -306,10 +306,10 @@ just lint              # Check ruff + black formatting
 just lint-fix          # Auto-fix lint issues
 just release           # Build plugin.video.nzbdav.zip
 just ship              # Run tests then build release
-just repo              # Build release + generate Kodi repo in dist/
+just repo              # Build release + generate Kodi repo in repo/zips/
 just repo-zip          # Build repo + copy repository zip to cwd
 just clean             # Remove build artifacts
-just dist-clean        # Remove build artifacts + dist/
+just dist-clean        # Remove build artifacts + dist/ + repo/zips/
 ```
 
 ### Project Structure
@@ -350,7 +350,8 @@ scripts/
   build_zip.py           # Addon zip builder
   generate_repo.py       # Kodi repo metadata generator
 repo/
-  repository.nzbdav/     # Repository addon (points to GitHub Pages)
+  repository.nzbdav/     # Repository addon (points to raw GitHub repo/zips metadata)
+  zips/                  # Generated Kodi repository feed committed for raw GitHub hosting
 .github/workflows/
   ci.yml                 # Test + lint on push/PR (Python 3.10/3.12)
   release.yml            # Build + deploy on version tags
@@ -367,10 +368,11 @@ TODO.md                             # Consolidated roadmap + architecture (Parts
 ### Releasing
 
 1. Bump `version` in `plugin.video.nzbdav/addon.xml`
-2. Commit: `git commit -am "release: v0.X.0"`
-3. Tag and push: `git tag v0.X.0 && git push origin main v0.X.0`
-4. GitHub Actions builds the zip, creates a GitHub Release, and updates the Kodi repo on GitHub Pages
-5. Kodi picks up the update automatically via the repository
+2. Run `just repo` to regenerate `repo/zips/`
+3. Commit the version bump and regenerated repository feed: `git add plugin.video.nzbdav/addon.xml plugin.video.nzbdav/changelog.txt CHANGELOG.md repo/zips && git commit -m "release: v0.X.0"`
+4. Tag and push: `git tag v0.X.0 && git push origin main v0.X.0`
+5. GitHub Actions builds the release zip and creates a GitHub Release
+6. Kodi picks up the update automatically from the raw GitHub `repo/zips` feed
 
 ---
 

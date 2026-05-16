@@ -162,7 +162,7 @@ def _copy_legacy_addon_zips(output_dir, addon_id, legacy_addon_zip_dir=None):
 
 
 def generate_repo(
-    output_dir="dist",
+    output_dir="repo/zips",
     addon_zip=None,
     legacy_addon_zip_dir=None,
     repo_zip_alias_versions=None,
@@ -278,7 +278,7 @@ def _write_dir_index(dir_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--output-dir", default="dist", help="Output directory for repo"
+        "--output-dir", default="repo/zips", help="Output directory for repo"
     )
     parser.add_argument(
         "--addon-zip",

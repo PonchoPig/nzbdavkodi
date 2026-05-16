@@ -284,13 +284,13 @@ release:
 # Run tests then build release
 ship: test release
 
-# Generate Kodi repository in dist/
+# Generate Kodi repository in repo/zips for raw.githubusercontent.com hosting
 repo: release
-    python3 scripts/generate_repo.py --output-dir dist
+    python3 scripts/generate_repo.py --output-dir repo/zips
 
 # Copy the repository zip to cwd for easy access
 repo-zip: repo
-    cp dist/repository.nzbdav/repository.nzbdav-*.zip .
+    cp repo/zips/repository.nzbdav/repository.nzbdav-*.zip .
     @ls -lh repository.nzbdav-*.zip
 
 # Clean build artifacts
@@ -302,6 +302,6 @@ clean:
 # Run the same checks as GitHub CI (lint + test)
 ci: lint test
 
-# Clean everything including dist
+# Clean everything including generated repository artifacts
 dist-clean: clean
-    rm -rf dist/
+    rm -rf dist/ repo/zips/
