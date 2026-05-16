@@ -81,7 +81,7 @@ def test_generate_repo_includes_repository_checksum_url(tmp_path, monkeypatch):
     assert repo_dir is not None
     assert (
         repo_dir.findtext("checksum")
-        == "https://raw.githubusercontent.com/PonchoPig/PonchoPig.github.io/main/repo/zips/addons.xml.md5"
+        == "https://raw.githubusercontent.com/PonchoPig/nzbdavkodi/main/repo/zips/addons.xml.md5"
     )
 
 

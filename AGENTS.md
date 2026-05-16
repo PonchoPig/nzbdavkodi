@@ -67,7 +67,7 @@ just dist-clean    # clean + remove dist/ and repo/zips/
 
 - **CI** runs on every push to main and PRs: tests across Python 3.10/3.12, ruff, black
 - **Release** triggers on `v*` tags: runs tests, verifies addon.xml version matches tag, builds zip, and creates a GitHub Release
-- **Kodi repo** install source served from `https://PonchoPig.github.io/`; update metadata served from `https://raw.githubusercontent.com/PonchoPig/PonchoPig.github.io/main/repo/zips/`
+- **Kodi repo** metadata served from `https://raw.githubusercontent.com/PonchoPig/nzbdavkodi/main/repo/zips/`
 - To release: bump version in `addon.xml`, run `just repo`, commit, `git tag v0.X.0 && git push origin main v0.X.0`
 
 ## Key Patterns
