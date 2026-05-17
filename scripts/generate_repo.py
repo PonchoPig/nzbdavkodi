@@ -73,7 +73,6 @@ def _copy_addon_zip(output_dir, addon_id, addon_zip):
     dest_dir = os.path.join(output_dir, addon_id)
     os.makedirs(dest_dir, exist_ok=True)
     shutil.copy2(addon_zip, os.path.join(dest_dir, zip_name))
-    shutil.copy2(addon_zip, os.path.join(output_dir, zip_name))
     return version, dest_dir, zip_name
 
 
@@ -99,12 +98,18 @@ def _copy_root_zips(output_dir, root_dir):
             shutil.copy2(os.path.join(output_dir, name), os.path.join(root_dir, name))
 
 
-def _copy_root_addon_zip(output_dir, root_dir, addon_zip_name):
-    if not addon_zip_name or os.path.abspath(output_dir) == os.path.abspath(root_dir):
-        return
-    src = os.path.join(output_dir, addon_zip_name)
-    if os.path.isfile(src):
-        shutil.copy2(src, os.path.join(root_dir, addon_zip_name))
+def _remove_root_addon_zips(output_dir, root_dir, addon_id):
+    for directory in (os.path.abspath(output_dir), os.path.abspath(root_dir)):
+        if not os.path.isdir(directory):
+            continue
+        for name in os.listdir(directory):
+            path = os.path.join(directory, name)
+            if (
+                name.startswith("{}-".format(addon_id))
+                and name.endswith(".zip")
+                and os.path.isfile(path)
+            ):
+                os.remove(path)
 
 
 def _write_html_index(path, links):
@@ -116,11 +121,11 @@ def _write_html_index(path, links):
         f.write(html)
 
 
-def write_pages_index(output_dir, repo_version="1.0.0", addon_zip_names=None):
+def write_pages_index(output_dir, repo_version="1.0.0"):
     """Write a Kodi-browsable directory listing for the root."""
     index_path = os.path.join(output_dir, "index.html")
     zip_name = "repository.nzbdav-{}.zip".format(repo_version)
-    _write_html_index(index_path, [zip_name] + list(addon_zip_names or ()))
+    _write_html_index(index_path, [zip_name])
 
     nojekyll_path = os.path.join(output_dir, ".nojekyll")
     with open(nojekyll_path, "w", encoding="utf-8") as f:
@@ -177,7 +182,6 @@ def _copy_addon_artifacts(output_dir, addon_id, main_addon, addon_zip=None):
         dest_dir = os.path.join(output_dir, addon_id)
         os.makedirs(dest_dir, exist_ok=True)
         shutil.copy2(zip_name, os.path.join(dest_dir, zip_name))
-        shutil.copy2(zip_name, os.path.join(output_dir, zip_name))
         shutil.copy2(main_addon, os.path.join(dest_dir, "addon.xml"))
         for asset in ["resources/icon.png", "resources/fanart.jpg"]:
             src = os.path.join(os.path.dirname(main_addon), asset)
@@ -313,15 +317,12 @@ def generate_repo(
             _write_dir_index(subdir_path)
 
     _copy_root_zips(output_dir, root_dir)
-    _copy_root_addon_zip(output_dir, root_dir, addon_zip_name)
+    _remove_root_addon_zips(output_dir, root_dir, main_addon_id)
     if legacy_root_metadata:
         _copy_legacy_root_metadata(output_dir, root_dir)
         _copy_legacy_root_addon_dirs(output_dir, root_dir)
-    write_pages_index(
-        root_dir,
-        repo_version,
-        addon_zip_names=[addon_zip_name] if addon_zip_name else None,
-    )
+    write_pages_index(output_dir, repo_version)
+    write_pages_index(root_dir, repo_version)
 
 
 def _write_dir_index(dir_path):

@@ -40,7 +40,7 @@ def test_generate_repo_writes_pages_root_files(tmp_path, monkeypatch):
     assert (tmp_path / "repo" / "zips" / "addons.xml").exists()
 
 
-def test_generate_repo_root_index_links_current_addon_zip(tmp_path, monkeypatch):
+def test_generate_repo_root_index_omits_current_addon_zip(tmp_path, monkeypatch):
     module = _load_generate_repo_module()
     monkeypatch.chdir(REPO_ROOT)
     release_zip_dir = tmp_path / "release-input"
@@ -53,11 +53,17 @@ def test_generate_repo_root_index_links_current_addon_zip(tmp_path, monkeypatch)
         zf.writestr("plugin.video.nzbdav/addon.xml", release_addon_xml)
 
     output_dir = tmp_path / "repo" / "zips"
+    output_dir.mkdir(parents=True)
+    (output_dir / "plugin.video.nzbdav-1.2.1.zip").write_bytes(b"stale")
+    (tmp_path / "plugin.video.nzbdav-1.2.1.zip").write_bytes(b"stale")
     module.generate_repo(output_dir=str(output_dir), addon_zip=str(release_zip))
 
-    contents = (tmp_path / "index.html").read_text(encoding="utf-8")
-    assert "plugin.video.nzbdav-1.2.1.zip" in contents
-    assert (tmp_path / "plugin.video.nzbdav-1.2.1.zip").exists()
+    for index_path in (tmp_path / "index.html", output_dir / "index.html"):
+        contents = index_path.read_text(encoding="utf-8")
+        assert "repository.nzbdav-" in contents
+        assert "plugin.video.nzbdav-1.2.1.zip" not in contents
+    assert not (tmp_path / "plugin.video.nzbdav-1.2.1.zip").exists()
+    assert not (output_dir / "plugin.video.nzbdav-1.2.1.zip").exists()
     assert (
         output_dir / "plugin.video.nzbdav" / "plugin.video.nzbdav-1.2.1.zip"
     ).exists()
@@ -217,7 +223,7 @@ def test_generate_repo_can_publish_release_zip_instead_of_worktree_addon(
     assert (
         output_dir / "plugin.video.nzbdav" / "plugin.video.nzbdav-1.0.3.zip"
     ).exists()
-    assert (tmp_path / "plugin.video.nzbdav-1.0.3.zip").exists()
+    assert not (tmp_path / "plugin.video.nzbdav-1.0.3.zip").exists()
     assert not (output_dir / "plugin.video.nzbdav" / "release-addon.zip").exists()
     assert (
         output_dir / "plugin.video.nzbdav" / "resources" / "icon.png"
