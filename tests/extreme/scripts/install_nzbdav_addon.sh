@@ -40,10 +40,10 @@ kodi_version_supported() {
 echo "[nzbdav-addon] just repo-zip"
 ( cd "$REPO_ROOT" && just repo-zip )
 
-# `just repo-zip` writes the feed to repo/zips/; find the most recent addon zip
-ZIP="$(ls -t "$REPO_ROOT"/repo/zips/plugin.video.nzbdav-*.zip 2>/dev/null | head -n1)"
+# `just repo-zip` writes the addon zip to the repository root; find the latest.
+ZIP="$(ls -t "$REPO_ROOT"/plugin.video.nzbdav-*.zip 2>/dev/null | head -n1)"
 if [[ -z "$ZIP" ]]; then
-    echo "[nzbdav-addon] FATAL: no zip found in $REPO_ROOT/repo/zips/"
+    echo "[nzbdav-addon] FATAL: no zip found in $REPO_ROOT/"
     exit 1
 fi
 echo "[nzbdav-addon] Using $ZIP"

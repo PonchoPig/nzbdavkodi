@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Orientation for agents (Claude, Copilot, Codex, etc.) working in this repo. User-facing install / config / usage docs live in [README.md](README.md); outstanding work and architecture deep-dives live in [TODO.md](TODO.md).
+Orientation for agents (Claude, Copilot, Codex, etc.) working in this repo. User-facing install / config / usage docs start in [README.md](README.md), [docs/quickstart.md](docs/quickstart.md), and [docs/troubleshooting.md](docs/troubleshooting.md). Contributor architecture docs live in [docs/architecture.md](docs/architecture.md) and [docs/proxy-architecture.md](docs/proxy-architecture.md). Active backlog lives in [TODO.md](TODO.md).
 
 ## Pre-Push
 
@@ -8,7 +8,7 @@ Before any `git commit` or `git push`, run the same tooling the GitHub workflow 
 
 ```bash
 just lint    # ruff + black format check
-just test    # full pytest suite
+just test    # default non-integration pytest suite
 ```
 
 Both must pass cleanly. If `just lint` reports formatting issues, run `just lint-fix` and re-run `just lint` before committing.
@@ -19,11 +19,11 @@ Before cutting a new versioned release:
 
 1. Update `README.md` with any user-visible changes.
 2. Update `CHANGELOG.md` (repo-level) with the full version notes.
-3. Update `plugin.video.nzbdav/changelog.txt` (the addon's Kodi-visible changelog) with only a short, sweet release summary under 80 characters.
-4. **ONLY** bump the addon version in `plugin.video.nzbdav/addon.xml` to the new semver. Do NOT bump repository version—this allows users with the Kodi repo already installed to see the addon version upgrade without re-adding the repository.
-5. Run `just repo` to regenerate the committed raw GitHub repository feed in `repo/zips/`.
+3. Update `repo/plugin.video.nzbdav/changelog.txt` (the addon's Kodi-visible changelog) with only a short, sweet release summary under 80 characters.
+4. **ONLY** bump the addon version in `repo/plugin.video.nzbdav/addon.xml` to the new semver. Do NOT bump repository version—this allows users with the Kodi repo already installed to see the addon version upgrade without re-adding the repository.
+5. Run `just repo` so `repo/zips/` reflects the new addon release for raw GitHub hosting.
 6. Commit and push to `main`.
-7. Tag with the new semver and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z` (the Release workflow creates the GitHub Release artifact).
+7. Tag with the new semver and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z` (the Release workflow takes over from there).
 
 ## Project Overview
 
@@ -43,32 +43,33 @@ The background service (`service.py`) runs a `StreamProxy` HTTP server that remu
 ## Commands
 
 ```bash
-just test          # Run all 670 tests (~2s)
+just test          # Run the default non-integration pytest suite
 just lint          # ruff + black check
 just lint-fix      # Auto-fix lint issues
 just release       # Build plugin.video.nzbdav.zip
 just ship          # test + release
 just repo          # Build release + generate Kodi repo in repo/zips/
 just clean         # Remove __pycache__, .pytest_cache, zip
-just dist-clean    # clean + remove dist/ and repo/zips/
+just dist-clean    # clean + remove repo/zips/
 ```
 
 ## Code Layout
 
-- `plugin.video.nzbdav/` -- The Kodi addon (installed via zip)
-- `plugin.video.nzbdav/resources/lib/` -- All Python modules
-- `plugin.video.nzbdav/resources/lib/ptt/` -- Vendored PTT library (DO NOT EDIT unless fixing compatibility)
+- `repo/plugin.video.nzbdav/` -- The Kodi addon (installed via zip)
+- `repo/plugin.video.nzbdav/resources/lib/` -- All Python modules
+- `repo/plugin.video.nzbdav/resources/lib/ptt/` -- Vendored PTT library (DO NOT EDIT unless fixing compatibility)
 - `scripts/` -- Build and repo generation scripts (`build_zip.py`, `generate_repo.py`)
-- `repo/repository.nzbdav/` -- Kodi repository addon descriptor (points to raw GitHub repo/zips metadata)
-- `.github/workflows/` -- CI (test+lint on push/PR), Release (build on `v*` tags)
+- `repo/repository.nzbdav/` -- Kodi repository addon descriptor (points to raw GitHub)
+- `repo/zips/` -- Generated Kodi repository metadata and zips
+- `.github/workflows/` -- CI (test+lint on push/PR), Release (build+deploy on `v*` tags)
 - `tests/` -- pytest tests with Kodi module mocks in conftest.py
 
 ## CI/CD
 
 - **CI** runs on every push to main and PRs: tests across Python 3.10/3.12, ruff, black
-- **Release** triggers on `v*` tags: runs tests, verifies addon.xml version matches tag, builds zip, and creates a GitHub Release
-- **Kodi repo** metadata served from `https://raw.githubusercontent.com/PonchoPig/nzbdavkodi/main/repo/zips/`
-- To release: bump version in `addon.xml`, run `just repo`, commit, `git tag v0.X.0 && git push origin main v0.X.0`
+- **Release** triggers on `v*` tags: runs tests, verifies addon.xml version matches tag, builds zip, creates GitHub Release
+- **Kodi repo metadata** served from raw GitHub at `https://raw.githubusercontent.com/xbmc4lyfe/nzbdavkodi/main/repo/zips/`
+- To release: bump version in `repo/plugin.video.nzbdav/addon.xml`, run `just repo`, commit, `git tag v0.X.0 && git push origin main v0.X.0`
 
 ## Key Patterns
 
@@ -85,7 +86,7 @@ just dist-clean    # clean + remove dist/ and repo/zips/
 - **PTT regex patterns**: Some PTT patterns use features that produce FutureWarning with newer Python. Escape `[` inside character classes.
 - **setResolvedUrl**: MUST be called on ALL paths (success with True, failure with False) or Kodi hangs waiting for resolution.
 - **xbmc.Monitor.waitForAbort()**: Use instead of time.sleep() in loops so Kodi can shut down cleanly.
-- **Testing Kodi code**: conftest.py mocks all xbmc* modules globally. Add `plugin.video.nzbdav` and `plugin.video.nzbdav/resources/lib` to sys.path.
+- **Testing Kodi code**: conftest.py mocks all xbmc* modules globally. Add `repo/plugin.video.nzbdav` and `repo/plugin.video.nzbdav/resources/lib` to sys.path.
 - **Live CoreELEC/Kodi debugging**: Agents may restart or kill/restart Kodi on `root@coreelec.local` when Kodi is crashed, hung, wedged in a core dump, or a deployment/debugging change needs a fresh Kodi process. Preserve useful crash/log evidence first when practical, then restart without waiting for separate approval.
 
 ## Adding New Features

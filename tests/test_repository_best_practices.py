@@ -7,22 +7,23 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+ADDON_DIR = REPO_ROOT / "repo" / "plugin.video.nzbdav"
 
 
 def test_addon_metadata_includes_repo_links_and_disclaimer():
-    addon_xml = REPO_ROOT / "plugin.video.nzbdav" / "addon.xml"
+    addon_xml = ADDON_DIR / "addon.xml"
     root = ET.parse(addon_xml).getroot()
     metadata = root.find("./extension[@point='xbmc.addon.metadata']")
 
     assert metadata is not None
-    assert metadata.findtext("source") == "https://github.com/PonchoPig/nzbdavkodi"
-    assert metadata.findtext("website") == "https://github.com/PonchoPig/nzbdavkodi"
+    assert metadata.findtext("source") == "https://github.com/xbmc4lyfe/nzbdavkodi"
+    assert metadata.findtext("website") == "https://xbmc4lyfe.github.io/nzbdavkodi/"
     disclaimers = metadata.findall("disclaimer")
     assert len(disclaimers) >= 2
 
 
 def test_addon_news_metadata_is_tiny_current_release_summary():
-    addon_xml = REPO_ROOT / "plugin.video.nzbdav" / "addon.xml"
+    addon_xml = ADDON_DIR / "addon.xml"
     root = ET.parse(addon_xml).getroot()
     metadata = root.find("./extension[@point='xbmc.addon.metadata']")
 
@@ -36,12 +37,10 @@ def test_addon_news_metadata_is_tiny_current_release_summary():
 
 
 def test_kodi_visible_changelog_is_tiny_current_release_summary():
-    addon_xml = REPO_ROOT / "plugin.video.nzbdav" / "addon.xml"
+    addon_xml = ADDON_DIR / "addon.xml"
     root = ET.parse(addon_xml).getroot()
     version = root.get("version")
-    changelog = (REPO_ROOT / "plugin.video.nzbdav" / "changelog.txt").read_text(
-        encoding="utf-8"
-    )
+    changelog = (ADDON_DIR / "changelog.txt").read_text(encoding="utf-8")
     summary = changelog.strip()
 
     assert summary.startswith("v{}: ".format(version))
@@ -58,7 +57,7 @@ def test_repo_changelog_keeps_full_release_history():
 
 
 def test_settings_labels_use_localized_string_ids():
-    settings_xml = REPO_ROOT / "plugin.video.nzbdav" / "resources" / "settings.xml"
+    settings_xml = ADDON_DIR / "resources" / "settings.xml"
     root = ET.parse(settings_xml).getroot()
 
     for category in root.findall("category"):
@@ -74,7 +73,7 @@ def test_settings_labels_use_localized_string_ids():
 
 
 def test_prowlarr_api_key_label_is_not_reused_for_test_action():
-    settings_xml = REPO_ROOT / "plugin.video.nzbdav" / "resources" / "settings.xml"
+    settings_xml = ADDON_DIR / "resources" / "settings.xml"
     root = ET.parse(settings_xml).getroot()
 
     api_key_setting = root.find(".//setting[@id='prowlarr_api_key']")
@@ -89,7 +88,7 @@ def test_prowlarr_api_key_label_is_not_reused_for_test_action():
 
 
 def test_settings_include_webdav_test_action():
-    settings_xml = REPO_ROOT / "plugin.video.nzbdav" / "resources" / "settings.xml"
+    settings_xml = ADDON_DIR / "resources" / "settings.xml"
     root = ET.parse(settings_xml).getroot()
 
     test_action = root.find(
@@ -101,12 +100,7 @@ def test_settings_include_webdav_test_action():
 
 def test_language_file_exists_for_kodi_strings():
     strings_po = (
-        REPO_ROOT
-        / "plugin.video.nzbdav"
-        / "resources"
-        / "language"
-        / "resource.language.en_gb"
-        / "strings.po"
+        ADDON_DIR / "resources" / "language" / "resource.language.en_gb" / "strings.po"
     )
     assert strings_po.exists()
     contents = strings_po.read_text(encoding="utf-8")
@@ -115,7 +109,7 @@ def test_language_file_exists_for_kodi_strings():
 
 
 def test_settings_include_direct_indexers_category():
-    settings_xml = REPO_ROOT / "plugin.video.nzbdav" / "resources" / "settings.xml"
+    settings_xml = ADDON_DIR / "resources" / "settings.xml"
     root = ET.parse(settings_xml).getroot()
 
     indexers_category = root.find("./category[@label='30163']")
@@ -155,16 +149,3 @@ def test_community_health_files_exist():
     ]
     for path in expected:
         assert path.exists(), "{} is missing".format(path)
-
-
-def test_github_pages_root_exposes_repository_zip_for_kodi_file_manager():
-    repo_xml = REPO_ROOT / "repo" / "repository.nzbdav" / "addon.xml"
-    repo_version = ET.parse(repo_xml).getroot().attrib["version"]
-    repo_zip_name = "repository.nzbdav-{}.zip".format(repo_version)
-
-    index_path = REPO_ROOT / "index.html"
-    assert index_path.exists()
-    index = index_path.read_text(encoding="utf-8")
-    assert 'href="{}"'.format(repo_zip_name) in index
-    assert (REPO_ROOT / repo_zip_name).exists()
-    assert (REPO_ROOT / ".nojekyll").exists()
