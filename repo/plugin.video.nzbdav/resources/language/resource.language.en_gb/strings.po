@@ -838,10 +838,6 @@ msgctxt "#30218"
 msgid "TMDBHelper is not installed. Install TMDBHelper, then rerun this wizard or use Install TMDBHelper Player from the addon menu."
 msgstr "TMDBHelper is not installed. Install TMDBHelper, then rerun this wizard or use Install TMDBHelper Player from the addon menu."
 
-msgctxt "#30219"
-msgid "Setup wizard cancelled"
-msgstr "Setup wizard cancelled"
-
 msgctxt "#30220"
 msgid "Setup wizard complete"
 msgstr "Setup wizard complete"
@@ -866,14 +862,6 @@ msgctxt "#30225"
 msgid "Prowlarr"
 msgstr "Prowlarr"
 
-msgctxt "#30226"
-msgid "Back"
-msgstr "Back"
-
-msgctxt "#30227"
-msgid "Done"
-msgstr "Done"
-
 msgctxt "#30228"
 msgid "No changes"
 msgstr "No changes"
@@ -897,10 +885,6 @@ msgstr "Step {0} of {1}"
 msgctxt "#30233"
 msgid "TMDBHelper is installed. You can continue."
 msgstr "TMDBHelper is installed. You can continue."
-
-msgctxt "#30234"
-msgid "Edit"
-msgstr "Edit"
 
 msgctxt "#30235"
 msgid "Enabled"

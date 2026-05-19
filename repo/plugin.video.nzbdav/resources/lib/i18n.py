@@ -131,22 +131,18 @@ _FALLBACK_STRINGS = {
         "TMDBHelper is not installed. Install TMDBHelper, then rerun this "
         "wizard or use Install TMDBHelper Player from the addon menu."
     ),
-    30219: "Setup wizard cancelled",
     30220: "Setup wizard complete",
     30221: "nzbdav Settings",
     30222: "WebDAV Settings",
     30223: "Search Provider",
     30224: "NZBHydra2",
     30225: "Prowlarr",
-    30226: "Back",
-    30227: "Done",
     30228: "No changes",
     30229: "Choose enabled options",
     30230: "Audio",
     30231: "PLEASE INSTALL TMDBHELPER BEFORE CONTINUING",
     30232: "Step {0} of {1}",
     30233: "TMDBHelper is installed. You can continue.",
-    30234: "Edit",
     30235: "Enabled",
     30236: "Disabled",
 }

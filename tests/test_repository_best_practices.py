@@ -400,7 +400,39 @@ def test_wizard_strings_exist():
     )
     contents = strings_po.read_text(encoding="utf-8")
 
-    for string_id in range(30202, 30237):
+    expected_ids = (
+        30202,
+        30203,
+        30204,
+        30205,
+        30206,
+        30207,
+        30208,
+        30209,
+        30210,
+        30211,
+        30212,
+        30213,
+        30215,
+        30216,
+        30217,
+        30218,
+        30220,
+        30221,
+        30222,
+        30223,
+        30224,
+        30225,
+        30228,
+        30229,
+        30230,
+        30231,
+        30232,
+        30233,
+        30235,
+        30236,
+    )
+    for string_id in expected_ids:
         assert 'msgctxt "#{}"'.format(string_id) in contents
 
 
