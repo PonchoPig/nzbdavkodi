@@ -124,8 +124,8 @@ _FALLBACK_STRINGS = {
     30215: "Languages",
     30216: "TMDBHelper Player",
     30217: (
-        "Click Finish to complete setup.\n\nFinish will also install the "
-        "NZB-DAV player into TMDBHelper for you."
+        "Click Finish to complete setup.\n\nTo install the NZB-DAV player "
+        "into TMDBHelper, use the Install step in the wizard."
     ),
     30218: (
         "TMDBHelper is not installed. Install TMDBHelper, then rerun this "
