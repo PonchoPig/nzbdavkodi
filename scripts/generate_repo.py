@@ -116,10 +116,15 @@ def _write_html_index(path, links):
         f.write(html)
 
 
-def write_pages_index(output_dir, repo_version="1.0.0", addon_zip_names=None):
+def write_pages_index(
+    output_dir,
+    repo_id="repository.nzbdav",
+    repo_version="1.0.0",
+    addon_zip_names=None,
+):
     """Write a Kodi-browsable directory listing for the root."""
     index_path = os.path.join(output_dir, "index.html")
-    zip_name = "repository.nzbdav-{}.zip".format(repo_version)
+    zip_name = "{}-{}.zip".format(repo_id, repo_version)
     _write_html_index(index_path, [zip_name] + list(addon_zip_names or ()))
 
     nojekyll_path = os.path.join(output_dir, ".nojekyll")
@@ -222,6 +227,7 @@ def generate_repo(
     legacy_addon_zip_dir=None,
     repo_zip_alias_versions=None,
     legacy_root_metadata=False,
+    repository_addon_dir="repo/repository.nzbdav",
 ):
     os.makedirs(output_dir, exist_ok=True)
     root_dir = _root_dir_for_output(output_dir)
@@ -236,7 +242,7 @@ def generate_repo(
         addon_xmls.append(read_addon_xml(main_addon))
 
     # Collect addon.xml from the repository addon
-    repo_addon = "repo/repository.nzbdav/addon.xml"
+    repo_addon = os.path.join(repository_addon_dir, "addon.xml")
     if os.path.exists(repo_addon):
         addon_xmls.append(read_addon_xml(repo_addon))
 
@@ -269,40 +275,42 @@ def generate_repo(
     _copy_legacy_addon_zips(output_dir, main_addon_id, legacy_addon_zip_dir)
 
     # Build repository addon zip and copy into output
-    repo_dir = "repo/repository.nzbdav"
+    repo_dir = repository_addon_dir
     if os.path.isdir(repo_dir):
-        repo_out = os.path.join(output_dir, "repository.nzbdav")
-        os.makedirs(repo_out, exist_ok=True)
         repo_tree = _parse_local_xml(repo_addon)
-        repo_version = repo_tree.getroot().attrib["version"]
-        repo_zip_path = os.path.join(
-            repo_out, "repository.nzbdav-{}.zip".format(repo_version)
-        )
+        repo_root = repo_tree.getroot()
+        repo_id = repo_root.attrib["id"]
+        repo_version = repo_root.attrib["version"]
+        repo_out = os.path.join(output_dir, repo_id)
+        os.makedirs(repo_out, exist_ok=True)
+        repo_zip_name = "{}-{}.zip".format(repo_id, repo_version)
+        repo_zip_path = os.path.join(repo_out, repo_zip_name)
         with zipfile.ZipFile(repo_zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for root, dirs, files in os.walk(repo_dir):
                 for f in files:
                     filepath = os.path.join(root, f)
-                    arcname = os.path.relpath(filepath, "repo").replace(os.sep, "/")
+                    arcname = os.path.relpath(
+                        filepath, os.path.dirname(repo_dir)
+                    ).replace(os.sep, "/")
                     zf.write(filepath, arcname)
         shutil.copy2(repo_addon, os.path.join(repo_out, "addon.xml"))
         repo_icon = os.path.join(repo_dir, "icon.png")
         if os.path.exists(repo_icon):
             shutil.copy2(repo_icon, os.path.join(repo_out, "icon.png"))
         # Also copy repo zip to the zips root for raw GitHub hosting.
-        root_repo_zip = os.path.join(
-            output_dir, "repository.nzbdav-{}.zip".format(repo_version)
-        )
+        root_repo_zip = os.path.join(output_dir, repo_zip_name)
         shutil.copy2(repo_zip_path, root_repo_zip)
         if repo_zip_alias_versions is None:
             repo_zip_alias_versions = _REPOSITORY_ZIP_ALIAS_VERSIONS
         for alias_version in repo_zip_alias_versions:
             if alias_version == repo_version:
                 continue
-            alias_name = "repository.nzbdav-{}.zip".format(alias_version)
+            alias_name = "{}-{}.zip".format(repo_id, alias_version)
             shutil.copy2(repo_zip_path, os.path.join(repo_out, alias_name))
             shutil.copy2(repo_zip_path, os.path.join(output_dir, alias_name))
         print("Built repository addon zip at {}".format(repo_zip_path))
     else:
+        repo_id = "repository.nzbdav"
         repo_version = "1.0.0"
 
     # Generate directory listing index.html for each subdirectory so Kodi's
@@ -319,6 +327,7 @@ def generate_repo(
         _copy_legacy_root_addon_dirs(output_dir, root_dir)
     write_pages_index(
         root_dir,
+        repo_id,
         repo_version,
         addon_zip_names=[addon_zip_name] if addon_zip_name else None,
     )
@@ -361,10 +370,16 @@ if __name__ == "__main__":
             "repository addons installed before the raw-GitHub migration"
         ),
     )
+    parser.add_argument(
+        "--repository-addon-dir",
+        default="repo/repository.nzbdav",
+        help="Repository addon directory to include and package",
+    )
     args = parser.parse_args()
     generate_repo(
         output_dir=args.output_dir,
         addon_zip=args.addon_zip,
         legacy_addon_zip_dir=args.legacy_addon_zip_dir,
         legacy_root_metadata=args.legacy_root_metadata,
+        repository_addon_dir=args.repository_addon_dir,
     )

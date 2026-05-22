@@ -13,6 +13,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ADDON_DIR = REPO_ROOT / "repo" / "plugin.video.nzbdav"
 REPO_ADDON_DIR = REPO_ROOT / "repo" / "repository.nzbdav"
+RELEASES_REPO_ADDON_DIR = REPO_ROOT / "repo" / "repository.nzbdav.releases"
 
 
 def _load_generate_repo_module():
@@ -167,6 +168,45 @@ def test_generate_repo_includes_repository_checksum_url(tmp_path, monkeypatch):
     assert repo_dir.findtext("info") == "{}/addons.xml".format(repo_base)
     assert repo_dir.findtext("checksum") == "{}/addons.xml.md5".format(repo_base)
     assert repo_dir.findtext("datadir") == "{}/".format(repo_base)
+
+
+def test_generate_repo_can_build_alternate_releases_repository_addon(
+    tmp_path, monkeypatch
+):
+    module = _load_generate_repo_module()
+    monkeypatch.chdir(REPO_ROOT)
+    release_zip = tmp_path / "plugin.video.nzbdav-1.2.1.zip"
+    release_addon_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="plugin.video.nzbdav" name="NZB-DAV" version="1.2.1" />
+"""
+    with zipfile.ZipFile(release_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("plugin.video.nzbdav/addon.xml", release_addon_xml)
+
+    output_dir = tmp_path / "releases-repo"
+    module.generate_repo(
+        output_dir=str(output_dir),
+        addon_zip=str(release_zip),
+        repository_addon_dir=str(RELEASES_REPO_ADDON_DIR),
+        repo_zip_alias_versions=(),
+    )
+
+    tree = ET.parse(output_dir / "addons.xml")
+    repo = tree.find("./addon[@id='repository.nzbdav.releases']")
+    assert repo is not None
+    repo_dir = repo.find("./extension[@point='xbmc.addon.repository']/dir")
+    repo_base = "https://ponchopig.github.io/nzbdavkodi/releases-repo"
+    assert repo_dir is not None
+    assert repo_dir.findtext("info") == "{}/addons.xml".format(repo_base)
+    assert repo_dir.findtext("checksum") == "{}/addons.xml.md5".format(repo_base)
+    assert repo_dir.findtext("datadir") == "{}/".format(repo_base)
+    assert (
+        output_dir
+        / "repository.nzbdav.releases"
+        / "repository.nzbdav.releases-1.0.0.zip"
+    ).exists()
+    assert (output_dir / "repository.nzbdav.releases-1.0.0.zip").exists()
+    index = (output_dir / "index.html").read_text(encoding="utf-8")
+    assert "repository.nzbdav.releases-1.0.0.zip" in index
 
 
 def test_generate_repo_writes_strict_md5_payload(tmp_path, monkeypatch):

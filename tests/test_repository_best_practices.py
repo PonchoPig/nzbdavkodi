@@ -9,6 +9,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ADDON_DIR = REPO_ROOT / "repo" / "plugin.video.nzbdav"
 REPO_ADDON_DIR = REPO_ROOT / "repo" / "repository.nzbdav"
+RELEASES_REPO_ADDON_DIR = REPO_ROOT / "repo" / "repository.nzbdav.releases"
 
 
 def test_addon_metadata_includes_repo_links_and_disclaimer():
@@ -29,6 +30,19 @@ def test_repository_addon_uses_raw_repo_zips_metadata_urls():
     repo_dir = root.find("./extension[@point='xbmc.addon.repository']/dir")
     repo_base = "https://raw.githubusercontent.com/PonchoPig/nzbdavkodi/main/repo/zips"
 
+    assert repo_dir is not None
+    assert repo_dir.findtext("info") == "{}/addons.xml".format(repo_base)
+    assert repo_dir.findtext("checksum") == "{}/addons.xml.md5".format(repo_base)
+    assert repo_dir.findtext("datadir") == "{}/".format(repo_base)
+
+
+def test_releases_repository_addon_uses_pages_release_metadata_urls():
+    addon_xml = RELEASES_REPO_ADDON_DIR / "addon.xml"
+    root = ET.parse(addon_xml).getroot()
+    repo_dir = root.find("./extension[@point='xbmc.addon.repository']/dir")
+    repo_base = "https://ponchopig.github.io/nzbdavkodi/releases-repo"
+
+    assert root.attrib["id"] == "repository.nzbdav.releases"
     assert repo_dir is not None
     assert repo_dir.findtext("info") == "{}/addons.xml".format(repo_base)
     assert repo_dir.findtext("checksum") == "{}/addons.xml.md5".format(repo_base)

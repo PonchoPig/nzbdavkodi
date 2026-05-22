@@ -56,12 +56,15 @@ No separate SABnzbd needed -- nzbdav handles both downloading and serving.
 
 ### Via Kodi Repository (recommended)
 
-Install through the NZB-DAV repository for automatic updates:
+Install through the release-backed NZB-DAV repository for automatic updates:
 
-1. In Kodi: **Settings > File Manager > Add source** > enter `https://ponchopig.github.io/nzbdavkodi/` > name it `nzbdav`
-2. **Settings > Add-ons > Install from zip file** > `nzbdav` > the latest `repository.nzbdav-*.zip` shown at the source root
-3. **Settings > Add-ons > Install from repository > NZB-DAV Repository > Video add-ons > NZB-DAV**
+1. In Kodi: **Settings > File Manager > Add source** > enter `https://ponchopig.github.io/nzbdavkodi/releases-repo/` > name it `nzbdav-releases`
+2. **Settings > Add-ons > Install from zip file** > `nzbdav-releases` > the latest `repository.nzbdav.releases-*.zip` shown at the source root
+3. **Settings > Add-ons > Install from repository > NZB-DAV Releases Repository > Video add-ons > NZB-DAV**
 4. Future updates are installed automatically
+
+The older `https://ponchopig.github.io/nzbdavkodi/` source remains available for
+existing installs that use the raw `repo/zips` repository layout.
 
 ### Manual Install
 
@@ -340,7 +343,8 @@ scripts/
   build_zip.py           # Addon zip builder
   generate_repo.py       # Kodi repo metadata generator
 repo/
-  repository.nzbdav/     # Repository addon (points to raw repo/zips metadata)
+  repository.nzbdav/     # Legacy repository addon (points to raw repo/zips metadata)
+  repository.nzbdav.releases/ # Release-backed repository addon
   zips/                  # Generated Kodi repository metadata and zips
 .github/workflows/
   ci.yml                 # Test + lint on push/PR (Python 3.10/3.12)
@@ -358,13 +362,15 @@ TODO.md                             # Active backlog
 ### Releasing
 
 1. Bump `version` in `repo/plugin.video.nzbdav/addon.xml`
-2. Run `just repo` to refresh `repo/zips/` for raw GitHub repository metadata.
+2. Run `just repo` to refresh `repo/zips/` for raw GitHub repository metadata if
+   you are updating the legacy checked-in repository.
 3. Stage the version bump plus generated repository metadata and zips:
    `git add repo/plugin.video.nzbdav/addon.xml repo/zips/`
 4. Commit: `git commit -m "release: v0.X.0"`
 5. Tag and push: `git tag v0.X.0 && git push origin main v0.X.0`
 6. GitHub Actions builds the zip and creates a GitHub Release
-7. Kodi picks up the update automatically from the generated `repo/zips/` repository metadata
+7. GitHub Pages publishes the release-backed repository at `/releases-repo/`
+   from GitHub Release assets, without checking addon zips into git
 
 ---
 

@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/pages.yml"
       - "repo/repository.nzbdav/**"
+      - "repo/repository.nzbdav.releases/**"
       - "repo/plugin.video.nzbdav/addon.xml"
       - "scripts/generate_repo.py"
   workflow_run:
@@ -90,13 +91,21 @@ jobs:
             sleep 15
           done
 
-      - name: Generate repository metadata
+      - name: Generate legacy repository metadata
         run: >-
           python3 scripts/generate_repo.py
           --output-dir pages-dist/repo/zips
           --addon-zip release-addon.zip
           --legacy-addon-zip-dir release-zips
           --legacy-root-metadata
+
+      - name: Generate release-backed repository metadata
+        run: >-
+          python3 scripts/generate_repo.py
+          --output-dir pages-dist/releases-repo
+          --addon-zip release-addon.zip
+          --legacy-addon-zip-dir release-zips
+          --repository-addon-dir repo/repository.nzbdav.releases
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
