@@ -107,7 +107,7 @@ def test_generate_repo_legacy_root_metadata_mirrors_addon_directories(
 
     assert (tmp_path / "plugin.video.nzbdav" / "plugin.video.nzbdav-1.2.1.zip").exists()
     assert (tmp_path / "plugin.video.nzbdav" / "plugin.video.nzbdav-1.0.5.zip").exists()
-    assert (tmp_path / "repository.nzbdav" / "repository.nzbdav-1.1.0.zip").exists()
+    assert (tmp_path / "repository.nzbdav" / "repository.nzbdav-1.1.1.zip").exists()
     assert (tmp_path / "repository.nzbdav" / "repository.nzbdav-1.0.6.zip").exists()
 
 
@@ -162,7 +162,7 @@ def test_generate_repo_includes_repository_checksum_url(tmp_path, monkeypatch):
     repo = tree.find("./addon[@id='repository.nzbdav']")
     assert repo is not None
     repo_dir = repo.find("./extension[@point='xbmc.addon.repository']/dir")
-    repo_base = "https://raw.githubusercontent.com/xbmc4lyfe/nzbdavkodi/main/repo/zips"
+    repo_base = "https://raw.githubusercontent.com/PonchoPig/nzbdavkodi/main/repo/zips"
     assert repo_dir is not None
     assert repo_dir.findtext("info") == "{}/addons.xml".format(repo_base)
     assert repo_dir.findtext("checksum") == "{}/addons.xml.md5".format(repo_base)
