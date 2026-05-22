@@ -12,7 +12,7 @@ selection:
 The current dense table is useful for scanning, but it is cramped from a couch.
 The redesign adds four selectable layouts:
 
-- Ranked cards, the new default.
+- Ranked cards, the new larger visual layout.
 - Split detail, for users who want a compact list plus a larger focused-result
   detail panel.
 - Classic rows, preserving the original dense row style as an explicit option.
@@ -81,7 +81,7 @@ layouts share the same display semantics.
 
 ## Ranked Cards Layout
 
-`results-dialog-ranked.xml` is the default full-screen results picker.
+`results-dialog-ranked.xml` is the larger full-screen results picker.
 
 Each row is taller than the current dense table. The focused row emphasizes:
 
@@ -113,7 +113,7 @@ No extra click target is introduced. Enter still selects the focused item.
 
 ## Error Handling
 
-If the setting cannot be read, is missing, or is malformed, use ranked cards.
+If the setting cannot be read, is missing, or is malformed, use Classic rows.
 
 If no results are available, `show_results_dialog()` keeps returning `None`.
 

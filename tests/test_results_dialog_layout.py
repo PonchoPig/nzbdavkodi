@@ -96,6 +96,8 @@ def test_results_dialog_has_no_temporary_debug_controls(
         for control in root.iter("control"):
             assert control.findtext("label") != "LAYOUT DEBUG"
             assert control.findtext("colordiffuse") not in debug_band_colors
+            for element in control.iter():
+                assert element.attrib.get("colordiffuse") not in debug_band_colors
 
 
 def test_results_dialog_layout_properties_are_backed_by_display_fields():
