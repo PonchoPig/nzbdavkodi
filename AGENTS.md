@@ -179,7 +179,7 @@ Prefer evidence first, restart second. If Kodi is actively wedged and logs are a
 
 - CI runs on every push to `main` and PRs: tests across Python 3.10/3.12, ruff, and black.
 - Release workflow triggers on `v*` tags: runs tests, verifies `addon.xml` version matches the tag, builds the zip, and creates a GitHub Release.
-- Kodi repo metadata is served from raw GitHub at `https://raw.githubusercontent.com/xbmc4lyfe/nzbdavkodi/main/repo/zips/`.
+- Kodi repo metadata is served from raw GitHub at `https://raw.githubusercontent.com/PonchoPig/nzbdavkodi/main/repo/zips/`.
 
 ## Release Checklist
 
