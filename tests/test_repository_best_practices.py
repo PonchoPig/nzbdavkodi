@@ -43,10 +43,10 @@ def test_releases_repository_addon_uses_pages_release_metadata_urls():
     repo_base = "https://ponchopig.github.io/nzbdavkodi/releases-repo"
 
     assert root.attrib["id"] == "repository.nzbdav.releases"
-    assert root.attrib["version"] == "1.0.1"
+    assert root.attrib["version"] == "1.0.2"
     assert repo_dir is not None
     assert repo_dir.findtext("info") == "{}/addons.xml".format(repo_base)
-    assert repo_dir.find("checksum") is None
+    assert repo_dir.findtext("checksum") == "{}/addons.xml.md5".format(repo_base)
     assert repo_dir.findtext("datadir") == "{}/".format(repo_base)
 
 

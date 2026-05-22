@@ -197,16 +197,16 @@ def test_generate_repo_can_build_alternate_releases_repository_addon(
     repo_base = "https://ponchopig.github.io/nzbdavkodi/releases-repo"
     assert repo_dir is not None
     assert repo_dir.findtext("info") == "{}/addons.xml".format(repo_base)
-    assert repo_dir.find("checksum") is None
+    assert repo_dir.findtext("checksum") == "{}/addons.xml.md5".format(repo_base)
     assert repo_dir.findtext("datadir") == "{}/".format(repo_base)
     assert (
         output_dir
         / "repository.nzbdav.releases"
-        / "repository.nzbdav.releases-1.0.1.zip"
+        / "repository.nzbdav.releases-1.0.2.zip"
     ).exists()
-    assert (output_dir / "repository.nzbdav.releases-1.0.1.zip").exists()
+    assert (output_dir / "repository.nzbdav.releases-1.0.2.zip").exists()
     index = (output_dir / "index.html").read_text(encoding="utf-8")
-    assert "repository.nzbdav.releases-1.0.1.zip" in index
+    assert "repository.nzbdav.releases-1.0.2.zip" in index
 
 
 def test_generate_repo_fails_when_repository_addon_dir_is_missing(
