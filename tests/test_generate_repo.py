@@ -209,6 +209,28 @@ def test_generate_repo_can_build_alternate_releases_repository_addon(
     assert "repository.nzbdav.releases-1.0.0.zip" in index
 
 
+def test_generate_repo_fails_when_repository_addon_dir_is_missing(
+    tmp_path, monkeypatch
+):
+    module = _load_generate_repo_module()
+    monkeypatch.chdir(REPO_ROOT)
+
+    missing_repo_dir = tmp_path / "missing-repository-addon"
+
+    with pytest.raises(SystemExit) as excinfo:
+        module.generate_repo(
+            output_dir=str(tmp_path / "repo-output"),
+            repository_addon_dir=str(missing_repo_dir),
+        )
+
+    assert str(excinfo.value) == (
+        "generate_repo: repository addon directory not found: {!r}".format(
+            str(missing_repo_dir)
+        )
+    )
+    assert not (tmp_path / "repo-output" / "addons.xml").exists()
+
+
 def test_generate_repo_writes_strict_md5_payload(tmp_path, monkeypatch):
     module = _load_generate_repo_module()
     monkeypatch.chdir(REPO_ROOT)

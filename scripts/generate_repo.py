@@ -229,6 +229,13 @@ def generate_repo(
     legacy_root_metadata=False,
     repository_addon_dir="repo/repository.nzbdav",
 ):
+    if not os.path.isdir(repository_addon_dir):
+        raise SystemExit(
+            "generate_repo: repository addon directory not found: {!r}".format(
+                repository_addon_dir
+            )
+        )
+
     os.makedirs(output_dir, exist_ok=True)
     root_dir = _root_dir_for_output(output_dir)
 
@@ -243,8 +250,11 @@ def generate_repo(
 
     # Collect addon.xml from the repository addon
     repo_addon = os.path.join(repository_addon_dir, "addon.xml")
-    if os.path.exists(repo_addon):
-        addon_xmls.append(read_addon_xml(repo_addon))
+    if not os.path.exists(repo_addon):
+        raise SystemExit(
+            "generate_repo: repository addon.xml not found: {!r}".format(repo_addon)
+        )
+    addon_xmls.append(read_addon_xml(repo_addon))
 
     # Write addons.xml
     addons_xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<addons>\n'
@@ -276,42 +286,38 @@ def generate_repo(
 
     # Build repository addon zip and copy into output
     repo_dir = repository_addon_dir
-    if os.path.isdir(repo_dir):
-        repo_tree = _parse_local_xml(repo_addon)
-        repo_root = repo_tree.getroot()
-        repo_id = repo_root.attrib["id"]
-        repo_version = repo_root.attrib["version"]
-        repo_out = os.path.join(output_dir, repo_id)
-        os.makedirs(repo_out, exist_ok=True)
-        repo_zip_name = "{}-{}.zip".format(repo_id, repo_version)
-        repo_zip_path = os.path.join(repo_out, repo_zip_name)
-        with zipfile.ZipFile(repo_zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for root, dirs, files in os.walk(repo_dir):
-                for f in files:
-                    filepath = os.path.join(root, f)
-                    arcname = os.path.relpath(
-                        filepath, os.path.dirname(repo_dir)
-                    ).replace(os.sep, "/")
-                    zf.write(filepath, arcname)
-        shutil.copy2(repo_addon, os.path.join(repo_out, "addon.xml"))
-        repo_icon = os.path.join(repo_dir, "icon.png")
-        if os.path.exists(repo_icon):
-            shutil.copy2(repo_icon, os.path.join(repo_out, "icon.png"))
-        # Also copy repo zip to the zips root for raw GitHub hosting.
-        root_repo_zip = os.path.join(output_dir, repo_zip_name)
-        shutil.copy2(repo_zip_path, root_repo_zip)
-        if repo_zip_alias_versions is None:
-            repo_zip_alias_versions = _REPOSITORY_ZIP_ALIAS_VERSIONS
-        for alias_version in repo_zip_alias_versions:
-            if alias_version == repo_version:
-                continue
-            alias_name = "{}-{}.zip".format(repo_id, alias_version)
-            shutil.copy2(repo_zip_path, os.path.join(repo_out, alias_name))
-            shutil.copy2(repo_zip_path, os.path.join(output_dir, alias_name))
-        print("Built repository addon zip at {}".format(repo_zip_path))
-    else:
-        repo_id = "repository.nzbdav"
-        repo_version = "1.0.0"
+    repo_tree = _parse_local_xml(repo_addon)
+    repo_root = repo_tree.getroot()
+    repo_id = repo_root.attrib["id"]
+    repo_version = repo_root.attrib["version"]
+    repo_out = os.path.join(output_dir, repo_id)
+    os.makedirs(repo_out, exist_ok=True)
+    repo_zip_name = "{}-{}.zip".format(repo_id, repo_version)
+    repo_zip_path = os.path.join(repo_out, repo_zip_name)
+    with zipfile.ZipFile(repo_zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(repo_dir):
+            for f in files:
+                filepath = os.path.join(root, f)
+                arcname = os.path.relpath(filepath, os.path.dirname(repo_dir)).replace(
+                    os.sep, "/"
+                )
+                zf.write(filepath, arcname)
+    shutil.copy2(repo_addon, os.path.join(repo_out, "addon.xml"))
+    repo_icon = os.path.join(repo_dir, "icon.png")
+    if os.path.exists(repo_icon):
+        shutil.copy2(repo_icon, os.path.join(repo_out, "icon.png"))
+    # Also copy repo zip to the zips root for raw GitHub hosting.
+    root_repo_zip = os.path.join(output_dir, repo_zip_name)
+    shutil.copy2(repo_zip_path, root_repo_zip)
+    if repo_zip_alias_versions is None:
+        repo_zip_alias_versions = _REPOSITORY_ZIP_ALIAS_VERSIONS
+    for alias_version in repo_zip_alias_versions:
+        if alias_version == repo_version:
+            continue
+        alias_name = "{}-{}.zip".format(repo_id, alias_version)
+        shutil.copy2(repo_zip_path, os.path.join(repo_out, alias_name))
+        shutil.copy2(repo_zip_path, os.path.join(output_dir, alias_name))
+    print("Built repository addon zip at {}".format(repo_zip_path))
 
     # Generate directory listing index.html for each subdirectory so Kodi's
     # file manager can browse the repo via GitHub Pages.
