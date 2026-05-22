@@ -40,13 +40,13 @@ def test_releases_repository_addon_uses_pages_release_metadata_urls():
     addon_xml = RELEASES_REPO_ADDON_DIR / "addon.xml"
     root = ET.parse(addon_xml).getroot()
     repo_dir = root.find("./extension[@point='xbmc.addon.repository']/dir")
-    repo_base = "https://ponchopig.github.io/nzbdavkodi/releases-repo"
+    repo_base = "https://raw.githubusercontent.com/PonchoPig/nzbdavkodi/main/repo/zips"
 
     assert root.attrib["id"] == "repository.nzbdav.releases"
-    assert root.attrib["version"] == "1.0.3"
+    assert root.attrib["version"] == "1.0.4"
     assert repo_dir is not None
     assert repo_dir.findtext("info") == "{}/addons.xml".format(repo_base)
-    assert repo_dir.findtext("checksum") == "{}/addons.xml.md5.txt".format(repo_base)
+    assert repo_dir.findtext("checksum") == "{}/addons.xml.md5".format(repo_base)
     assert repo_dir.findtext("datadir") == "{}/".format(repo_base)
 
 
