@@ -17,8 +17,8 @@ def test_addon_metadata_includes_repo_links_and_disclaimer():
     metadata = root.find("./extension[@point='xbmc.addon.metadata']")
 
     assert metadata is not None
-    assert metadata.findtext("source") == "https://github.com/Appz4Fun/nzbdavkodi"
-    assert metadata.findtext("website") == "https://appz4fun.github.io/nzbdavkodi/"
+    assert metadata.findtext("source") == "https://github.com/PonchoPig/nzbdavkodi"
+    assert metadata.findtext("website") == "https://ponchopig.github.io/nzbdavkodi/"
     disclaimers = metadata.findall("disclaimer")
     assert len(disclaimers) >= 2
 
@@ -27,7 +27,7 @@ def test_repository_addon_uses_raw_repo_zips_metadata_urls():
     addon_xml = REPO_ADDON_DIR / "addon.xml"
     root = ET.parse(addon_xml).getroot()
     repo_dir = root.find("./extension[@point='xbmc.addon.repository']/dir")
-    repo_base = "https://raw.githubusercontent.com/xbmc4lyfe/nzbdavkodi/main/repo/zips"
+    repo_base = "https://raw.githubusercontent.com/PonchoPig/nzbdavkodi/main/repo/zips"
 
     assert repo_dir is not None
     assert repo_dir.findtext("info") == "{}/addons.xml".format(repo_base)
@@ -41,13 +41,14 @@ def test_issue_template_contact_links_use_canonical_owner():
     ).read_text(encoding="utf-8")
 
     assert (
-        "https://github.com/Appz4Fun/nzbdavkodi/blob/main/SUPPORT.md" in issue_template
+        "https://github.com/PonchoPig/nzbdavkodi/blob/main/SUPPORT.md" in issue_template
     )
     assert (
-        "https://github.com/Appz4Fun/nzbdavkodi/security/advisories/new"
+        "https://github.com/PonchoPig/nzbdavkodi/security/advisories/new"
         in issue_template
     )
     assert "https://github.com/xbmc4lyfe/nzbdavkodi" not in issue_template
+    assert "https://github.com/Appz4Fun/nzbdavkodi" not in issue_template
 
 
 def test_addon_news_metadata_is_tiny_current_release_summary():
