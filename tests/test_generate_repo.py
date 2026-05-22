@@ -279,6 +279,10 @@ def test_generate_repo_can_publish_release_zip_instead_of_worktree_addon(
     metadata = addon.find("./extension[@point='xbmc.addon.metadata']")
     assert metadata is not None
     assert metadata.find("news") is None
+    assert metadata.findtext("path") == (
+        "https://github.com/PonchoPig/nzbdavkodi/releases/download/"
+        "v1.0.3/plugin.video.nzbdav-1.0.3.zip"
+    )
     assert (
         output_dir / "plugin.video.nzbdav" / "plugin.video.nzbdav-1.0.3.zip"
     ).exists()

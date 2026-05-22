@@ -42,21 +42,52 @@ def _strip_repo_metadata_news(root):
                 metadata.remove(news)
 
 
-def read_addon_xml(path):
+def _github_release_asset_url(addon_id, version):
+    zip_name = "{}-{}.zip".format(addon_id, version)
+    return "https://github.com/PonchoPig/nzbdavkodi/releases/download/v{}/{}".format(
+        version, zip_name
+    )
+
+
+def _set_metadata_path(root, path):
+    for metadata in root.findall("extension"):
+        if metadata.attrib.get("point") in {
+            "xbmc.addon.metadata",
+            "kodi.addon.metadata",
+        }:
+            path_element = metadata.find("path")
+            if path_element is None:
+                path_element = ET.Element("path")
+                metadata.insert(0, path_element)
+            path_element.text = path
+            if path_element.tail is None:
+                path_element.tail = metadata.text or "\n        "
+            return
+
+    metadata = ET.SubElement(root, "extension", {"point": "xbmc.addon.metadata"})
+    path_element = ET.SubElement(metadata, "path")
+    path_element.text = path
+
+
+def read_addon_xml(path, release_asset_url=None):
     """Read an addon.xml and return its text content."""
     tree = _parse_local_xml(path)
     root = tree.getroot()
     _strip_repo_metadata_news(root)
+    if release_asset_url:
+        _set_metadata_path(root, release_asset_url)
     return ET.tostring(root, encoding="unicode")
 
 
-def _read_addon_xml_from_zip(zip_path, addon_id):
+def _read_addon_xml_from_zip(zip_path, addon_id, release_asset_url=None):
     addon_xml_name = "{}/addon.xml".format(addon_id)
     with zipfile.ZipFile(zip_path) as zf:
         xml_bytes = zf.read(addon_xml_name)
     tree = _parse_xml_bytes(xml_bytes)
     root = tree.getroot()
     _strip_repo_metadata_news(root)
+    if release_asset_url:
+        _set_metadata_path(root, release_asset_url)
     return ET.tostring(root, encoding="unicode")
 
 
@@ -244,9 +275,22 @@ def generate_repo(
     main_addon = "repo/plugin.video.nzbdav/addon.xml"
     main_addon_id = "plugin.video.nzbdav"
     if addon_zip:
-        addon_xmls.append(_read_addon_xml_from_zip(addon_zip, main_addon_id))
+        release_version = _read_addon_version_from_zip(addon_zip, main_addon_id)
+        addon_xmls.append(
+            _read_addon_xml_from_zip(
+                addon_zip,
+                main_addon_id,
+                _github_release_asset_url(main_addon_id, release_version),
+            )
+        )
     elif os.path.exists(main_addon):
-        addon_xmls.append(read_addon_xml(main_addon))
+        release_version = _parse_local_xml(main_addon).getroot().attrib["version"]
+        addon_xmls.append(
+            read_addon_xml(
+                main_addon,
+                _github_release_asset_url(main_addon_id, release_version),
+            )
+        )
 
     # Collect addon.xml from the repository addon
     repo_addon = os.path.join(repository_addon_dir, "addon.xml")
