@@ -2744,12 +2744,35 @@ def test_route_dispatches_to_test_webdav(mock_test):
 def test_main_menu_auto_runs_setup_wizard_before_rendering():
     from resources.lib import router
 
-    with patch("resources.lib.setup_wizard.maybe_auto_run") as maybe_auto_run:
-        with patch("resources.lib.router.xbmcplugin.addDirectoryItem"):
-            with patch("resources.lib.router.xbmcplugin.endOfDirectory"):
+    events = []
+
+    def _record_auto_run():
+        events.append("auto_run")
+
+    def _record_add_directory_item(*_args, **_kwargs):
+        events.append("add_directory_item")
+        return True
+
+    def _record_end_of_directory(*_args, **_kwargs):
+        events.append("end_of_directory")
+        return True
+
+    with patch(
+        "resources.lib.setup_wizard.maybe_auto_run", side_effect=_record_auto_run
+    ) as maybe_auto_run:
+        with patch(
+            "resources.lib.router.xbmcplugin.addDirectoryItem",
+            side_effect=_record_add_directory_item,
+        ):
+            with patch(
+                "resources.lib.router.xbmcplugin.endOfDirectory",
+                side_effect=_record_end_of_directory,
+            ):
                 router._handle_main_menu(1)
 
     maybe_auto_run.assert_called_once()
+    assert events.index("auto_run") < events.index("add_directory_item")
+    assert events.index("auto_run") < events.index("end_of_directory")
 
 
 def test_main_menu_includes_setup_wizard_rerun_entry():
