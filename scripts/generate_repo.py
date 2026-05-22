@@ -272,6 +272,8 @@ def generate_repo(
     ).hexdigest()  # noqa: S324  # not used for security
     with open(os.path.join(output_dir, "addons.xml.md5"), "w") as f:
         f.write(md5)
+    with open(os.path.join(output_dir, "addons.xml.md5.txt"), "w") as f:
+        f.write(md5)
 
     print(
         "Generated {} ({} addons, md5: {})".format(
