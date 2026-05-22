@@ -50,6 +50,7 @@ def _github_release_asset_url(addon_id, version):
 
 
 def _set_metadata_path(root, path):
+    updated = False
     for metadata in root.findall("extension"):
         if metadata.attrib.get("point") in {
             "xbmc.addon.metadata",
@@ -62,7 +63,10 @@ def _set_metadata_path(root, path):
             path_element.text = path
             if path_element.tail is None:
                 path_element.tail = metadata.text or "\n        "
-            return
+            updated = True
+
+    if updated:
+        return
 
     metadata = ET.SubElement(root, "extension", {"point": "xbmc.addon.metadata"})
     path_element = ET.SubElement(metadata, "path")
