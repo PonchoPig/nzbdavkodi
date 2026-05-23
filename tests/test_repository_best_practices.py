@@ -31,9 +31,16 @@ def test_repository_addon_uses_pages_metadata_urls():
 
     assert root.attrib["id"] == "repository.nzbdav"
     assert repo_dir is not None
-    assert repo_dir.findtext("info") == "{}/addons.xml".format(repo_base)
-    assert repo_dir.findtext("checksum") == "{}/addons.xml.md5".format(repo_base)
+    info = repo_dir.find("info")
+    checksum = repo_dir.find("checksum")
+    assert info is not None
+    assert info.text == "{}/addons.xml.gz".format(repo_base)
+    assert info.get("compressed") == "true"
+    assert checksum is not None
+    assert checksum.text == "{}/addons.xml.gz.sha256".format(repo_base)
+    assert checksum.get("verify") == "sha256"
     assert repo_dir.findtext("datadir") == "{}/".format(repo_base)
+    assert repo_dir.findtext("hashes") == "sha256"
 
 
 def test_repository_addon_depends_on_kodi_addon_api():

@@ -3,6 +3,8 @@
 
 """Tests for repository metadata generation."""
 
+import gzip
+import hashlib
 import importlib.util
 import xml.etree.ElementTree as ET
 import zipfile
@@ -13,6 +15,22 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ADDON_DIR = REPO_ROOT / "repo" / "plugin.video.nzbdav"
 REPO_ADDON_DIR = REPO_ROOT / "repo" / "repository.nzbdav"
+
+
+def _parse_generated_addons_xml(output_dir):
+    with gzip.open(output_dir / "addons.xml.gz", "rb") as fh:
+        return ET.ElementTree(ET.fromstring(fh.read()))
+
+
+def _rewrite_generated_addons_xml(output_dir, tree, module):
+    plain_path = output_dir / "addons.xml"
+    gzip_path = output_dir / "addons.xml.gz"
+    sha256_path = output_dir / "addons.xml.gz.sha256"
+    tree.write(plain_path, encoding="utf-8", xml_declaration=True)
+    with gzip.open(gzip_path, "wb") as fh:
+        fh.write(plain_path.read_bytes())
+    sha256 = module.hashlib.sha256(gzip_path.read_bytes()).hexdigest()
+    sha256_path.write_text("{}  addons.xml.gz".format(sha256), encoding="utf-8")
 
 
 def _load_generate_repo_module():
@@ -39,8 +57,9 @@ def test_generate_repo_writes_minimal_pages_root_files(tmp_path, monkeypatch):
     assert ".zip" in contents
     assert "plugin.video.nzbdav-" not in contents
     assert (output_dir / ".nojekyll").exists()
-    assert (output_dir / "addons.xml").exists()
-    assert (output_dir / "addons.xml.md5").exists()
+    assert (output_dir / "addons.xml.gz").exists()
+    assert (output_dir / "addons.xml.gz.sha256").exists()
+    assert not (output_dir / "addons.xml.md5").exists()
     assert not list(output_dir.glob("plugin.video.nzbdav-*.zip"))
 
 
@@ -75,7 +94,7 @@ def test_generate_repo_omits_full_changelog_from_repo_index(tmp_path, monkeypatc
     output_dir = tmp_path / "pages"
     module.generate_repo(output_dir=str(output_dir))
 
-    tree = ET.parse(output_dir / "addons.xml")
+    tree = _parse_generated_addons_xml(output_dir)
     addon = tree.find("./addon[@id='plugin.video.nzbdav']")
     assert addon is not None
     metadata = addon.find("./extension[@point='xbmc.addon.metadata']")
@@ -90,15 +109,22 @@ def test_generate_repo_includes_pages_repository_urls(tmp_path, monkeypatch):
     output_dir = tmp_path / "pages"
     module.generate_repo(output_dir=str(output_dir))
 
-    tree = ET.parse(output_dir / "addons.xml")
+    tree = _parse_generated_addons_xml(output_dir)
     repo = tree.find("./addon[@id='repository.nzbdav']")
     assert repo is not None
     repo_dir = repo.find("./extension[@point='xbmc.addon.repository']/dir")
     repo_base = "https://ponchopig.github.io/nzbdavkodi"
     assert repo_dir is not None
-    assert repo_dir.findtext("info") == "{}/addons.xml".format(repo_base)
-    assert repo_dir.findtext("checksum") == "{}/addons.xml.md5".format(repo_base)
+    info = repo_dir.find("info")
+    checksum = repo_dir.find("checksum")
+    assert info is not None
+    assert info.text == "{}/addons.xml.gz".format(repo_base)
+    assert info.get("compressed") == "true"
+    assert checksum is not None
+    assert checksum.text == "{}/addons.xml.gz.sha256".format(repo_base)
+    assert checksum.get("verify") == "sha256"
     assert repo_dir.findtext("datadir") == "{}/".format(repo_base)
+    assert repo_dir.findtext("hashes") == "sha256"
 
 
 def test_generate_repo_fails_when_repository_addon_dir_is_missing(
@@ -120,19 +146,21 @@ def test_generate_repo_fails_when_repository_addon_dir_is_missing(
             str(missing_repo_dir)
         )
     )
-    assert not (tmp_path / "repo-output" / "addons.xml").exists()
+    assert not (tmp_path / "repo-output" / "addons.xml.gz").exists()
 
 
-def test_generate_repo_writes_strict_md5_payload(tmp_path, monkeypatch):
+def test_generate_repo_writes_sha256_payload_for_compressed_metadata(
+    tmp_path, monkeypatch
+):
     module = _load_generate_repo_module()
     monkeypatch.chdir(REPO_ROOT)
 
     output_dir = tmp_path / "pages"
     module.generate_repo(output_dir=str(output_dir))
 
-    md5_payload = (output_dir / "addons.xml.md5").read_bytes()
-    assert len(md5_payload) == 32
-    assert md5_payload.decode("ascii").isalnum()
+    checksum_payload = (output_dir / "addons.xml.gz.sha256").read_text(encoding="ascii")
+    expected = hashlib.sha256((output_dir / "addons.xml.gz").read_bytes()).hexdigest()
+    assert checksum_payload == "{}  addons.xml.gz".format(expected)
 
 
 def test_generate_repo_can_publish_release_zip_instead_of_worktree_addon(
@@ -161,7 +189,7 @@ def test_generate_repo_can_publish_release_zip_instead_of_worktree_addon(
     output_dir = tmp_path / "pages"
     module.generate_repo(output_dir=str(output_dir), addon_zip=str(release_zip))
 
-    tree = ET.parse(output_dir / "addons.xml")
+    tree = _parse_generated_addons_xml(output_dir)
     addon = tree.find("./addon[@id='plugin.video.nzbdav']")
     assert addon is not None
     assert addon.attrib["version"] == "1.0.3"
@@ -201,7 +229,7 @@ def test_generate_repo_uses_kodi_relative_addon_path_with_explicit_release_asset
     )
     captured = capsys.readouterr()
 
-    tree = ET.parse(output_dir / "addons.xml")
+    tree = _parse_generated_addons_xml(output_dir)
     addon = tree.find("./addon[@id='plugin.video.nzbdav']")
     assert addon is not None
     metadata = addon.find("./extension[@point='xbmc.addon.metadata']")
@@ -237,7 +265,7 @@ def test_generate_repo_writes_release_path_to_all_metadata_extensions(
     output_dir = tmp_path / "pages"
     module.generate_repo(output_dir=str(output_dir), addon_zip=str(release_zip))
 
-    tree = ET.parse(output_dir / "addons.xml")
+    tree = _parse_generated_addons_xml(output_dir)
     addon = tree.find("./addon[@id='plugin.video.nzbdav']")
     assert addon is not None
     expected_path = "plugin.video.nzbdav/plugin.video.nzbdav-1.0.4.zip"
@@ -288,16 +316,14 @@ def test_generate_repo_smoke_check_rejects_absolute_addon_metadata_path(
 
     output_dir = tmp_path / "pages"
     module.generate_repo(output_dir=str(output_dir))
-    tree = ET.parse(output_dir / "addons.xml")
+    tree = _parse_generated_addons_xml(output_dir)
     addon = tree.find("./addon[@id='plugin.video.nzbdav']")
     metadata = addon.find("./extension[@point='xbmc.addon.metadata']")
     metadata.find("path").text = (
         "https://github.com/PonchoPig/nzbdavkodi/releases/download/"
         "v9.9.9/plugin.video.nzbdav-9.9.9.zip"
     )
-    tree.write(output_dir / "addons.xml", encoding="utf-8", xml_declaration=True)
-    md5 = module.hashlib.md5((output_dir / "addons.xml").read_bytes()).hexdigest()
-    (output_dir / "addons.xml.md5").write_text(md5, encoding="utf-8")
+    _rewrite_generated_addons_xml(output_dir, tree, module)
 
     with pytest.raises(SystemExit) as excinfo:
         module.smoke_check_pages(str(output_dir))
@@ -323,13 +349,11 @@ def test_generate_repo_smoke_check_rejects_non_repository_relative_addon_metadat
 
     output_dir = tmp_path / "pages"
     module.generate_repo(output_dir=str(output_dir))
-    tree = ET.parse(output_dir / "addons.xml")
+    tree = _parse_generated_addons_xml(output_dir)
     addon = tree.find("./addon[@id='plugin.video.nzbdav']")
     metadata = addon.find("./extension[@point='xbmc.addon.metadata']")
     metadata.find("path").text = metadata_path
-    tree.write(output_dir / "addons.xml", encoding="utf-8", xml_declaration=True)
-    md5 = module.hashlib.md5((output_dir / "addons.xml").read_bytes()).hexdigest()
-    (output_dir / "addons.xml.md5").write_text(md5, encoding="utf-8")
+    _rewrite_generated_addons_xml(output_dir, tree, module)
 
     with pytest.raises(SystemExit) as excinfo:
         module.smoke_check_pages(str(output_dir))
@@ -369,9 +393,10 @@ def test_generate_repo_smoke_check_supports_non_default_repository_id(
 <addon id="repository.custom" name="Custom Repository" version="1.2.3">
     <extension point="xbmc.addon.repository" name="Custom Repository">
         <dir>
-            <info compressed="false">https://example.test/addons.xml</info>
-            <checksum>https://example.test/addons.xml.md5</checksum>
+            <info compressed="true">https://example.test/addons.xml.gz</info>
+            <checksum verify="sha256">https://example.test/addons.xml.gz.sha256</checksum>
             <datadir zip="true">https://example.test/</datadir>
+            <hashes>sha256</hashes>
         </dir>
     </extension>
 </addon>
