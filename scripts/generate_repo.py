@@ -66,11 +66,32 @@ def _is_repository_relative_path(path):
     return True
 
 
+def _write_sha256_file(path):
+    sha256 = hashlib.sha256(open(path, "rb").read()).hexdigest()
+    checksum_path = "{}.sha256".format(path)
+    with open(checksum_path, "w", encoding="ascii") as f:
+        f.write("{}  {}".format(sha256, os.path.basename(path)))
+    return sha256
+
+
+def _verify_sha256_file(path):
+    checksum_path = "{}.sha256".format(path)
+    filename = os.path.basename(path)
+    if not os.path.isfile(checksum_path):
+        raise SystemExit("generate_repo: missing sha256 checksum for {}".format(filename))
+    expected = hashlib.sha256(open(path, "rb").read()).hexdigest()
+    checksum = open(checksum_path, "r", encoding="ascii").read().strip()
+    checksum_parts = checksum.split()
+    if not checksum_parts or checksum_parts[0] != expected:
+        raise SystemExit("generate_repo: sha256 checksum does not match {}".format(filename))
+
+
 def _copy_addon_zip_for_pages(output_dir, addon_zip, addon_id, version):
     relative_path = _addon_zip_relative_path(addon_id, version)
     output_path = os.path.join(output_dir, relative_path)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     shutil.copy2(addon_zip, output_path)
+    _write_sha256_file(output_path)
     _write_dir_index(os.path.dirname(output_path))
     return relative_path
 
@@ -173,9 +194,7 @@ def _write_addons_xml(output_dir, addon_xmls):
     with gzip.GzipFile(gzip_path, "wb", mtime=0) as f:
         f.write(addons_xml.encode("utf-8"))
 
-    sha256 = hashlib.sha256(open(gzip_path, "rb").read()).hexdigest()
-    with open(os.path.join(output_dir, "addons.xml.gz.sha256"), "w", encoding="utf-8") as f:
-        f.write("{}  addons.xml.gz".format(sha256))
+    sha256 = _write_sha256_file(gzip_path)
 
     print(
         "Generated {} ({} addons, sha256: {})".format(
@@ -210,6 +229,8 @@ def _build_repository_zip(output_dir, repository_addon_dir):
                 zf.write(filepath, arcname)
 
     shutil.copy2(repo_zip_path, os.path.join(output_dir, repo_zip_name))
+    _write_sha256_file(repo_zip_path)
+    _write_sha256_file(os.path.join(output_dir, repo_zip_name))
     print("Built repository addon zip at {}".format(repo_zip_path))
     return repo_id, repo_version
 
@@ -346,6 +367,8 @@ def smoke_check_pages(output_dir, repository_addon_dir="repo/repository.nzbdav")
             raise SystemExit(
                 "generate_repo: plugin.video.nzbdav zip missing from repository datadir"
             )
+        if os.path.isfile(addon_zip_path):
+            _verify_sha256_file(addon_zip_path)
 
     repo_id, _repo_version = _read_repository_identity(repository_addon_dir)
     index = open(index_path, "r", encoding="utf-8").read()
@@ -358,6 +381,7 @@ def smoke_check_pages(output_dir, repository_addon_dir="repo/repository.nzbdav")
         raise SystemExit("generate_repo: index.html must link one repository zip")
 
     repo_zip_path = os.path.join(output_dir, repo_zip_names[0])
+    _verify_sha256_file(repo_zip_path)
     repo_addon_xml_member = "{}/addon.xml".format(repo_id)
     with zipfile.ZipFile(repo_zip_path) as zf:
         if repo_addon_xml_member not in zf.namelist():
@@ -380,6 +404,7 @@ def smoke_check_pages(output_dir, repository_addon_dir="repo/repository.nzbdav")
                     repo_id
                 )
             )
+        _verify_sha256_file(os.path.join(repo_dir, repo_dir_zip_names[0]))
 
 
 def main(argv=None):

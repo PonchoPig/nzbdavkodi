@@ -169,6 +169,27 @@ def test_generate_repo_writes_sha256_payload_for_compressed_metadata(
     assert checksum_payload == "{}  addons.xml.gz".format(expected)
 
 
+def test_generate_repo_writes_sha256_payloads_for_repository_zip_files(
+    tmp_path, monkeypatch
+):
+    module = _load_generate_repo_module()
+    monkeypatch.chdir(REPO_ROOT)
+
+    output_dir = tmp_path / "pages"
+    module.generate_repo(output_dir=str(output_dir))
+
+    zip_paths = [
+        output_dir / "repository.nzbdav" / "repository.nzbdav-1.1.4.zip",
+        output_dir / "repository.nzbdav-1.1.4.zip",
+    ]
+    for zip_path in zip_paths:
+        checksum_path = zip_path.with_name(zip_path.name + ".sha256")
+        expected = hashlib.sha256(zip_path.read_bytes()).hexdigest()
+        assert checksum_path.read_text(encoding="ascii") == "{}  {}".format(
+            expected, zip_path.name
+        )
+
+
 def test_generate_repo_can_publish_release_zip_instead_of_worktree_addon(
     tmp_path, monkeypatch
 ):
@@ -209,6 +230,13 @@ def test_generate_repo_can_publish_release_zip_instead_of_worktree_addon(
     assert (
         output_dir / "plugin.video.nzbdav" / "plugin.video.nzbdav-1.0.3.zip"
     ).read_bytes() == release_zip.read_bytes()
+    checksum_path = (
+        output_dir / "plugin.video.nzbdav" / "plugin.video.nzbdav-1.0.3.zip.sha256"
+    )
+    expected = hashlib.sha256(release_zip.read_bytes()).hexdigest()
+    assert checksum_path.read_text(encoding="ascii") == "{}  {}".format(
+        expected, "plugin.video.nzbdav-1.0.3.zip"
+    )
 
 
 def test_generate_repo_uses_kodi_relative_addon_path_with_explicit_release_asset_url(
@@ -327,6 +355,26 @@ def test_generate_repo_smoke_check_rejects_empty_sha256_checksum(tmp_path, monke
 
     assert str(excinfo.value) == (
         "generate_repo: addons.xml.gz.sha256 does not match addons.xml.gz"
+    )
+
+
+def test_generate_repo_smoke_check_rejects_missing_addon_zip_sha256(
+    tmp_path, monkeypatch
+):
+    module = _load_generate_repo_module()
+    monkeypatch.chdir(REPO_ROOT)
+
+    output_dir = tmp_path / "pages"
+    module.generate_repo(output_dir=str(output_dir))
+    (output_dir / "repository.nzbdav" / "repository.nzbdav-1.1.4.zip.sha256").unlink(
+        missing_ok=True
+    )
+
+    with pytest.raises(SystemExit) as excinfo:
+        module.smoke_check_pages(str(output_dir))
+
+    assert str(excinfo.value) == (
+        "generate_repo: missing sha256 checksum for repository.nzbdav-1.1.4.zip"
     )
 
 
