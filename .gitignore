@@ -13,7 +13,6 @@ uv.lock
 
 # Build
 dist/
-pages-dist/
 build/
 plugin.video.nzbdav.zip
 
@@ -49,11 +48,11 @@ run-ralphforever.sh
 .env.*
 !.env.example
 
-# Build zips (versioned)
+# Generated Kodi / Pages artifacts
+pages-dist/
+repo/zips/
 plugin.video.nzbdav-*.zip
 repository.nzbdav-*.zip
-!repository.nzbdav-*.zip
-!repo/zips/**/*.zip
 
 # dev docs
 devdocs
