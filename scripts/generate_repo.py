@@ -306,7 +306,8 @@ def smoke_check_pages(output_dir, repository_addon_dir="repo/repository.nzbdav")
 
     sha256 = hashlib.sha256(open(addons_xml_path, "rb").read()).hexdigest()
     checksum = open(checksum_path, "r", encoding="utf-8").read().strip()
-    if checksum.split()[0] != sha256:
+    checksum_parts = checksum.split()
+    if not checksum_parts or checksum_parts[0] != sha256:
         raise SystemExit(
             "generate_repo: addons.xml.gz.sha256 does not match addons.xml.gz"
         )
