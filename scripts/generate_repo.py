@@ -188,6 +188,7 @@ def _build_repository_zip(output_dir, repository_addon_dir):
 def generate_repo(
     output_dir="pages-dist",
     addon_zip=None,
+    release_asset_url=None,
     repository_addon_dir="repo/repository.nzbdav",
 ):
     if not os.path.isdir(repository_addon_dir):
@@ -210,11 +211,14 @@ def generate_repo(
     main_addon_id = "plugin.video.nzbdav"
     if addon_zip:
         release_version = _read_addon_version_from_zip(addon_zip, main_addon_id)
+        metadata_url = release_asset_url or _github_release_asset_url(
+            main_addon_id, release_version
+        )
         addon_xmls.append(
             _read_addon_xml_from_zip(
                 addon_zip,
                 main_addon_id,
-                _github_release_asset_url(main_addon_id, release_version),
+                metadata_url,
             )
         )
     elif os.path.exists(main_addon):
@@ -315,6 +319,11 @@ def main(argv=None):
         "--addon-zip", default=None, help="Use this addon release zip for metadata"
     )
     parser.add_argument(
+        "--release-asset-url",
+        default=None,
+        help="GitHub Release asset URL to write into addon metadata",
+    )
+    parser.add_argument(
         "--repository-addon-dir",
         default="repo/repository.nzbdav",
         help="Repository addon directory to include and package",
@@ -328,6 +337,7 @@ def main(argv=None):
     generate_repo(
         output_dir=args.output_dir,
         addon_zip=args.addon_zip,
+        release_asset_url=args.release_asset_url,
         repository_addon_dir=args.repository_addon_dir,
     )
     if args.smoke_check:
