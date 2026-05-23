@@ -139,9 +139,15 @@ def test_final_page_uses_finish_label_for_install_action():
 
     assert dialog.getProperty("wizard.next_label") == setup_wizard._string(30208)
     assert dialog.getProperty("wizard.next_visible") == "true"
+    assert dialog.getProperty("wizard.install_label") == setup_wizard._string(30011)
+    assert dialog.getProperty("wizard.install_visible") == "true"
     assert dialog.getProperty("wizard.test_visible") == "false"
     assert dialog.getProperty("wizard.cancel_visible") == "true"
     assert dialog._focus_id == setup_wizard.NEXT_BUTTON_ID
+
+
+def test_install_button_id_matches_skin_control():
+    assert setup_wizard.INSTALL_BUTTON_ID == 105
 
 
 def test_welcome_page_focuses_next_button_because_it_has_no_rows():
@@ -200,11 +206,14 @@ def test_last_page_syncs_native_footer_navigation_through_finish_button():
     dialog._render_page()
 
     previous = dialog.getControl(setup_wizard.PREVIOUS_BUTTON_ID)
+    install = dialog.getControl(setup_wizard.INSTALL_BUTTON_ID)
     finish = dialog.getControl(setup_wizard.NEXT_BUTTON_ID)
     cancel = dialog.getControl(setup_wizard.CANCEL_BUTTON_ID)
 
-    previous.controlRight.assert_called_with(finish)
-    finish.controlLeft.assert_called_with(previous)
+    previous.controlRight.assert_called_with(install)
+    install.controlLeft.assert_called_with(previous)
+    install.controlRight.assert_called_with(finish)
+    finish.controlLeft.assert_called_with(install)
     finish.controlRight.assert_called_with(cancel)
     cancel.controlLeft.assert_called_with(finish)
 
@@ -354,7 +363,7 @@ def test_tmdbhelper_missing_install_shows_message_without_installing():
     dialog_cls.return_value.ok.assert_called_once()
     assert dialog._finished is False
     dialog.addon.setSetting.assert_not_called()
-    dialog.close.assert_called_once()
+    dialog.close.assert_not_called()
 
 
 def test_tmdbhelper_present_install_uses_existing_player_installer():
@@ -369,12 +378,12 @@ def test_tmdbhelper_present_install_uses_existing_player_installer():
 
     install.assert_called_once()
     dialog_cls.return_value.ok.assert_called_once()
-    assert dialog._finished is True
-    dialog.addon.setSetting.assert_called_once_with("setup_wizard_completed", "true")
-    dialog.close.assert_called_once()
+    assert dialog._finished is False
+    dialog.addon.setSetting.assert_not_called()
+    dialog.close.assert_not_called()
 
 
-def test_install_button_completion_marks_wizard_completed():
+def test_install_button_runs_optional_player_install_without_finishing_wizard():
     addon = _addon_with_settings()
     dialog = _wizard_dialog(addon)
     dialog.close = MagicMock()
@@ -383,9 +392,9 @@ def test_install_button_completion_marks_wizard_completed():
         with patch("resources.lib.player_installer.install_player"), patch(
             "resources.lib.setup_wizard.xbmcgui.Dialog"
         ):
-            dialog._install_player()
+            dialog.onClick(setup_wizard.INSTALL_BUTTON_ID)
 
-    addon.setSetting.assert_called_once_with("setup_wizard_completed", "true")
+    addon.setSetting.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -413,6 +422,7 @@ def test_install_button_completion_marks_wizard_completed():
             len(setup_wizard.PAGES) - 1,
             [
                 setup_wizard.PREVIOUS_BUTTON_ID,
+                setup_wizard.INSTALL_BUTTON_ID,
                 setup_wizard.NEXT_BUTTON_ID,
                 setup_wizard.CANCEL_BUTTON_ID,
             ],
@@ -460,18 +470,21 @@ def test_nav_back_cancels_wizard():
     dialog._cancel.assert_called_once_with()
 
 
-def test_finish_without_tmdbhelper_shows_reminder_before_closing():
+def test_finish_without_tmdbhelper_completes_setup_without_installing():
     dialog = _wizard_dialog()
     dialog.page_index = len(setup_wizard.PAGES) - 1
     dialog.close = MagicMock()
 
     with patch("resources.lib.setup_wizard._tmdbhelper_installed", return_value=False):
-        with patch("resources.lib.setup_wizard.xbmcgui.Dialog") as dialog_cls:
+        with patch("resources.lib.player_installer.install_player") as install, patch(
+            "resources.lib.setup_wizard.xbmcgui.Dialog"
+        ) as dialog_cls:
             dialog._next_or_finish()
 
-    dialog_cls.return_value.ok.assert_called_once()
-    assert dialog._finished is False
-    dialog.addon.setSetting.assert_not_called()
+    install.assert_not_called()
+    dialog_cls.return_value.ok.assert_not_called()
+    assert dialog._finished is True
+    dialog.addon.setSetting.assert_called_once_with("setup_wizard_completed", "true")
     dialog.close.assert_called_once()
 
 

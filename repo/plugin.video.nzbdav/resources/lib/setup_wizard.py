@@ -22,6 +22,7 @@ PREVIOUS_BUTTON_ID = 101
 NEXT_BUTTON_ID = 102
 CANCEL_BUTTON_ID = 103
 TEST_BUTTON_ID = 104
+INSTALL_BUTTON_ID = 105
 
 ACTION_PREVIOUS_MENU = 10
 ACTION_NAV_BACK = 92
@@ -375,6 +376,8 @@ class SetupWizardDialog(xbmcgui.WindowXMLDialog):
             self._cancel()
         elif controlId == TEST_BUTTON_ID:
             self._test_current_page()
+        elif controlId == INSTALL_BUTTON_ID:
+            self._install_player()
 
     def onFocus(self, controlId):
         self._focus_id = controlId
@@ -400,6 +403,7 @@ class SetupWizardDialog(xbmcgui.WindowXMLDialog):
         self.setProperty("wizard.next_label", _string(next_label_id))
         self.setProperty("wizard.cancel_label", _string(30207))
         self.setProperty("wizard.action_label", _string(30210))
+        self.setProperty("wizard.install_label", _string(30011))
         previous_visible = self.page_index > 0
         self.setProperty(
             "wizard.previous_visible", "true" if previous_visible else "false"
@@ -408,8 +412,10 @@ class SetupWizardDialog(xbmcgui.WindowXMLDialog):
             "wizard.welcome_visible", "true" if page["key"] == "welcome" else "false"
         )
         is_test = bool(page.get("test"))
+        is_install = page["key"] == "tmdbhelper"
         self.setProperty("wizard.next_visible", "true")
         self.setProperty("wizard.test_visible", "true" if is_test else "false")
+        self.setProperty("wizard.install_visible", "true" if is_install else "false")
         self.setProperty("wizard.cancel_visible", "true")
         self.setProperty("wizard.warning", self._warning_text(page))
         self._populate_rows(page, selected_position)
@@ -509,15 +515,11 @@ class SetupWizardDialog(xbmcgui.WindowXMLDialog):
     def _install_player(self):
         if not _tmdbhelper_installed():
             xbmcgui.Dialog().ok(_string(30216), _string(30218))
-            self._finished = False
-            self.close()
             return
         from resources.lib.player_installer import install_player
 
         install_player()
         xbmcgui.Dialog().ok(_string(30216), _string(30233))
-        self._complete_wizard()
-        self.close()
 
     def _previous_page(self):
         if self.page_index > 0:
@@ -526,7 +528,8 @@ class SetupWizardDialog(xbmcgui.WindowXMLDialog):
 
     def _next_or_finish(self):
         if self._is_last():
-            self._install_player()
+            self._complete_wizard()
+            self.close()
             return
         self.page_index += 1
         self._render_page()
@@ -611,6 +614,8 @@ class SetupWizardDialog(xbmcgui.WindowXMLDialog):
             footer_ids.append(PREVIOUS_BUTTON_ID)
         if page.get("test"):
             footer_ids.append(TEST_BUTTON_ID)
+        if page["key"] == "tmdbhelper":
+            footer_ids.append(INSTALL_BUTTON_ID)
         footer_ids.append(NEXT_BUTTON_ID)
         footer_ids.append(CANCEL_BUTTON_ID)
         return footer_ids

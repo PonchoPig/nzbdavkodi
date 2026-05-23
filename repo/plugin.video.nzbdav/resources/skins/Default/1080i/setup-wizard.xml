@@ -119,7 +119,7 @@
     <control type="button" id="101">
       <left>72</left><top>915</top><width>210</width><height>120</height>
       <onup>50</onup>
-      <onright>104</onright>
+      <onright>105</onright>
       <label>$INFO[Window.Property(wizard.previous_label)]</label>
       <font>font12</font>
       <align>center</align>
@@ -139,10 +139,22 @@
       <visible>String.IsEqual(Window.Property(wizard.test_visible),true)</visible>
     </control>
 
+    <control type="button" id="105">
+      <left>950</left><top>915</top><width>300</width><height>120</height>
+      <onup>50</onup>
+      <onleft>101</onleft>
+      <onright>102</onright>
+      <label>$INFO[Window.Property(wizard.install_label)]</label>
+      <font>font12</font>
+      <align>center</align>
+      <aligny>center</aligny>
+      <visible>String.IsEqual(Window.Property(wizard.install_visible),true)</visible>
+    </control>
+
     <control type="button" id="102">
       <left>1250</left><top>915</top><width>240</width><height>120</height>
       <onup>50</onup>
-      <onleft>104</onleft>
+      <onleft>105</onleft>
       <onright>103</onright>
       <label>$INFO[Window.Property(wizard.next_label)]</label>
       <font>font12</font>
