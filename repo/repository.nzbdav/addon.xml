@@ -8,9 +8,10 @@
     </requires>
     <extension point="xbmc.addon.repository" name="NZB-DAV Repository">
         <dir>
-            <info compressed="false">https://ponchopig.github.io/nzbdavkodi/addons.xml</info>
-            <checksum>https://ponchopig.github.io/nzbdavkodi/addons.xml.md5</checksum>
+            <info compressed="true">https://ponchopig.github.io/nzbdavkodi/addons.xml.gz</info>
+            <checksum verify="sha256">https://ponchopig.github.io/nzbdavkodi/addons.xml.gz.sha256</checksum>
             <datadir zip="true">https://ponchopig.github.io/nzbdavkodi/</datadir>
+            <hashes>sha256</hashes>
         </dir>
     </extension>
     <extension point="xbmc.addon.metadata">

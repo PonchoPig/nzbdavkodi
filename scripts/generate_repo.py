@@ -5,6 +5,7 @@
 """Generate the GitHub Pages Kodi repository artifact."""
 
 import argparse
+import gzip
 import hashlib
 import os
 import shutil
@@ -168,15 +169,17 @@ def _write_addons_xml(output_dir, addon_xmls):
     with open(addons_xml_path, "w", encoding="utf-8") as f:
         f.write(addons_xml)
 
-    md5 = hashlib.md5(  # noqa: S324  # not used for security
-        addons_xml.encode("utf-8")
-    ).hexdigest()
-    with open(os.path.join(output_dir, "addons.xml.md5"), "w", encoding="utf-8") as f:
-        f.write(md5)
+    gzip_path = os.path.join(output_dir, "addons.xml.gz")
+    with gzip.GzipFile(gzip_path, "wb", mtime=0) as f:
+        f.write(addons_xml.encode("utf-8"))
+
+    sha256 = hashlib.sha256(open(gzip_path, "rb").read()).hexdigest()
+    with open(os.path.join(output_dir, "addons.xml.gz.sha256"), "w", encoding="utf-8") as f:
+        f.write("{}  addons.xml.gz".format(sha256))
 
     print(
-        "Generated {} ({} addons, md5: {})".format(
-            addons_xml_path, len(addon_xmls), md5
+        "Generated {} ({} addons, sha256: {})".format(
+            gzip_path, len(addon_xmls), sha256
         )
     )
 
@@ -291,21 +294,22 @@ def _read_repository_identity(repository_addon_dir):
 def smoke_check_pages(output_dir, repository_addon_dir="repo/repository.nzbdav"):
     """Validate the generated Pages artifact before deployment."""
     index_path = os.path.join(output_dir, "index.html")
-    addons_xml_path = os.path.join(output_dir, "addons.xml")
-    md5_path = os.path.join(output_dir, "addons.xml.md5")
+    addons_xml_path = os.path.join(output_dir, "addons.xml.gz")
+    checksum_path = os.path.join(output_dir, "addons.xml.gz.sha256")
 
     if not os.path.isfile(index_path):
         raise SystemExit("generate_repo: missing Pages index.html")
     if not os.path.isfile(addons_xml_path):
-        raise SystemExit("generate_repo: missing addons.xml")
-    if not os.path.isfile(md5_path):
-        raise SystemExit("generate_repo: missing addons.xml.md5")
+        raise SystemExit("generate_repo: missing addons.xml.gz")
+    if not os.path.isfile(checksum_path):
+        raise SystemExit("generate_repo: missing addons.xml.gz.sha256")
 
-    md5 = hashlib.md5(  # noqa: S324  # not used for security
-        open(addons_xml_path, "rb").read()
-    ).hexdigest()
-    if open(md5_path, "r", encoding="utf-8").read() != md5:
-        raise SystemExit("generate_repo: addons.xml.md5 does not match addons.xml")
+    sha256 = hashlib.sha256(open(addons_xml_path, "rb").read()).hexdigest()
+    checksum = open(checksum_path, "r", encoding="utf-8").read().strip()
+    if checksum.split()[0] != sha256:
+        raise SystemExit(
+            "generate_repo: addons.xml.gz.sha256 does not match addons.xml.gz"
+        )
 
     root_addon_zips = [
         name
@@ -317,7 +321,8 @@ def smoke_check_pages(output_dir, repository_addon_dir="repo/repository.nzbdav")
             "generate_repo: Pages root must not contain plugin.video.nzbdav zip files"
         )
 
-    tree = _parse_local_xml(addons_xml_path)
+    with gzip.open(addons_xml_path, "rb") as fh:
+        tree = _parse_xml_bytes(fh.read())
     addon = tree.getroot().find("./addon[@id='plugin.video.nzbdav']")
     if addon is not None:
         metadata = addon.find("./extension[@point='xbmc.addon.metadata']")
