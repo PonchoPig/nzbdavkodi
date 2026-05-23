@@ -11,6 +11,7 @@ import shutil
 import sys
 import xml.etree.ElementTree as ET
 import zipfile
+from urllib.parse import urlparse
 
 
 def _parse_local_xml(path):
@@ -46,6 +47,20 @@ def _github_release_asset_url(addon_id, version):
     return "https://github.com/PonchoPig/nzbdavkodi/releases/download/v{}/{}".format(
         version, zip_name
     )
+
+
+def _addon_zip_relative_path(addon_id, version):
+    zip_name = "{}-{}.zip".format(addon_id, version)
+    return "{}/{}".format(addon_id, zip_name)
+
+
+def _copy_addon_zip_for_pages(output_dir, addon_zip, addon_id, version):
+    relative_path = _addon_zip_relative_path(addon_id, version)
+    output_path = os.path.join(output_dir, relative_path)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    shutil.copy2(addon_zip, output_path)
+    _write_dir_index(os.path.dirname(output_path))
+    return relative_path
 
 
 def _set_metadata_path(root, path):
@@ -211,8 +226,11 @@ def generate_repo(
     main_addon_id = "plugin.video.nzbdav"
     if addon_zip:
         release_version = _read_addon_version_from_zip(addon_zip, main_addon_id)
-        metadata_url = release_asset_url or _github_release_asset_url(
-            main_addon_id, release_version
+        metadata_url = _copy_addon_zip_for_pages(
+            output_dir,
+            addon_zip,
+            main_addon_id,
+            release_version,
         )
         addon_xmls.append(
             _read_addon_xml_from_zip(
@@ -226,7 +244,7 @@ def generate_repo(
         addon_xmls.append(
             read_addon_xml(
                 main_addon,
-                _github_release_asset_url(main_addon_id, release_version),
+                _addon_zip_relative_path(main_addon_id, release_version),
             )
         )
 
@@ -267,14 +285,14 @@ def smoke_check_pages(output_dir, repository_addon_dir="repo/repository.nzbdav")
     if open(md5_path, "r", encoding="utf-8").read() != md5:
         raise SystemExit("generate_repo: addons.xml.md5 does not match addons.xml")
 
-    addon_zips = []
-    for root, _dirs, files in os.walk(output_dir):
-        for name in files:
-            if name.startswith("plugin.video.nzbdav-") and name.endswith(".zip"):
-                addon_zips.append(os.path.join(root, name))
-    if addon_zips:
+    root_addon_zips = [
+        name
+        for name in os.listdir(output_dir)
+        if name.startswith("plugin.video.nzbdav-") and name.endswith(".zip")
+    ]
+    if root_addon_zips:
         raise SystemExit(
-            "generate_repo: Pages artifact must not contain plugin.video.nzbdav zip files"
+            "generate_repo: Pages root must not contain plugin.video.nzbdav zip files"
         )
 
     tree = _parse_local_xml(addons_xml_path)
@@ -282,11 +300,23 @@ def smoke_check_pages(output_dir, repository_addon_dir="repo/repository.nzbdav")
     if addon is not None:
         metadata = addon.find("./extension[@point='xbmc.addon.metadata']")
         path = metadata.findtext("path") if metadata is not None else ""
-        if not path.startswith(
-            "https://github.com/PonchoPig/nzbdavkodi/releases/download/"
+        if path and urlparse(path).scheme:
+            raise SystemExit(
+                "generate_repo: plugin.video.nzbdav path must be relative to repository datadir"
+            )
+        if path:
+            addon_zip_path = os.path.join(output_dir, path)
+        else:
+            addon_zip_path = os.path.join(
+                output_dir,
+                "plugin.video.nzbdav",
+                "plugin.video.nzbdav-{}.zip".format(addon.attrib["version"]),
+            )
+        if os.path.exists(os.path.dirname(addon_zip_path)) and not os.path.isfile(
+            addon_zip_path
         ):
             raise SystemExit(
-                "generate_repo: plugin.video.nzbdav path must point to GitHub Releases"
+                "generate_repo: plugin.video.nzbdav zip missing from repository datadir"
             )
 
     repo_id, _repo_version = _read_repository_identity(repository_addon_dir)
