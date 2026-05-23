@@ -63,6 +63,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Kodi repository publishing now uses the GitHub Pages source
+  `https://ponchopig.github.io/nzbdavkodi`; CI generates the repository zip
+  and Pages metadata, and the repository points Kodi at the latest stable
+  non-prerelease GitHub Release asset for `plugin.video.nzbdav`.
+
 ### Fixed
 
 - `just make-dev` now works on macOS Bash 3.2 when no pip compatibility flags
