@@ -1,16 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addon id="repository.nzbdav"
        name="NZB-DAV Repository"
-       version="1.1.3"
+       version="1.1.4"
        provider-name="nzbdav">
     <requires>
         <import addon="xbmc.addon" version="12.0.0"/>
     </requires>
     <extension point="xbmc.addon.repository" name="NZB-DAV Repository">
         <dir>
-            <info compressed="true">https://ponchopig.github.io/nzbdavkodi/addons.xml.gz</info>
+            <info>https://ponchopig.github.io/nzbdavkodi/addons.xml.gz</info>
             <checksum verify="sha256">https://ponchopig.github.io/nzbdavkodi/addons.xml.gz.sha256</checksum>
-            <datadir zip="true">https://ponchopig.github.io/nzbdavkodi/</datadir>
+            <datadir>https://ponchopig.github.io/nzbdavkodi</datadir>
+            <artdir>https://ponchopig.github.io/nzbdavkodi</artdir>
             <hashes>sha256</hashes>
         </dir>
     </extension>

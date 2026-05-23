@@ -35,11 +35,17 @@ def test_repository_addon_uses_pages_metadata_urls():
     checksum = repo_dir.find("checksum")
     assert info is not None
     assert info.text == "{}/addons.xml.gz".format(repo_base)
-    assert info.get("compressed") == "true"
+    assert "compressed" not in info.attrib
     assert checksum is not None
     assert checksum.text == "{}/addons.xml.gz.sha256".format(repo_base)
     assert checksum.get("verify") == "sha256"
-    assert repo_dir.findtext("datadir") == "{}/".format(repo_base)
+    datadir = repo_dir.find("datadir")
+    artdir = repo_dir.find("artdir")
+    assert datadir is not None
+    assert datadir.text == repo_base
+    assert "zip" not in datadir.attrib
+    assert artdir is not None
+    assert artdir.text == repo_base
     assert repo_dir.findtext("hashes") == "sha256"
 
 

@@ -119,11 +119,17 @@ def test_generate_repo_includes_pages_repository_urls(tmp_path, monkeypatch):
     checksum = repo_dir.find("checksum")
     assert info is not None
     assert info.text == "{}/addons.xml.gz".format(repo_base)
-    assert info.get("compressed") == "true"
+    assert "compressed" not in info.attrib
     assert checksum is not None
     assert checksum.text == "{}/addons.xml.gz.sha256".format(repo_base)
     assert checksum.get("verify") == "sha256"
-    assert repo_dir.findtext("datadir") == "{}/".format(repo_base)
+    datadir = repo_dir.find("datadir")
+    artdir = repo_dir.find("artdir")
+    assert datadir is not None
+    assert datadir.text == repo_base
+    assert "zip" not in datadir.attrib
+    assert artdir is not None
+    assert artdir.text == repo_base
     assert repo_dir.findtext("hashes") == "sha256"
 
 
@@ -409,9 +415,10 @@ def test_generate_repo_smoke_check_supports_non_default_repository_id(
 <addon id="repository.custom" name="Custom Repository" version="1.2.3">
     <extension point="xbmc.addon.repository" name="Custom Repository">
         <dir>
-            <info compressed="true">https://example.test/addons.xml.gz</info>
+            <info>https://example.test/addons.xml.gz</info>
             <checksum verify="sha256">https://example.test/addons.xml.gz.sha256</checksum>
-            <datadir zip="true">https://example.test/</datadir>
+            <datadir>https://example.test</datadir>
+            <artdir>https://example.test</artdir>
             <hashes>sha256</hashes>
         </dir>
     </extension>
