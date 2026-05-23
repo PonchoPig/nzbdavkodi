@@ -292,6 +292,39 @@ def test_generate_repo_smoke_check_rejects_stale_repository_zip(tmp_path, monkey
     )
 
 
+def test_generate_repo_smoke_check_supports_non_default_repository_id(
+    tmp_path, monkeypatch
+):
+    module = _load_generate_repo_module()
+    monkeypatch.chdir(REPO_ROOT)
+    repository_addon_dir = tmp_path / "repo" / "repository.custom"
+    repository_addon_dir.mkdir(parents=True)
+    (repository_addon_dir / "addon.xml").write_text(
+        """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="repository.custom" name="Custom Repository" version="1.2.3">
+    <extension point="xbmc.addon.repository" name="Custom Repository">
+        <dir>
+            <info compressed="false">https://example.test/addons.xml</info>
+            <checksum>https://example.test/addons.xml.md5</checksum>
+            <datadir zip="true">https://example.test/</datadir>
+        </dir>
+    </extension>
+</addon>
+""",
+        encoding="utf-8",
+    )
+
+    output_dir = tmp_path / "pages"
+    module.generate_repo(
+        output_dir=str(output_dir),
+        repository_addon_dir=str(repository_addon_dir),
+    )
+
+    module.smoke_check_pages(
+        str(output_dir), repository_addon_dir=str(repository_addon_dir)
+    )
+
+
 def test_parse_local_xml_rejects_doctype(tmp_path):
     module = _load_generate_repo_module()
     addon_xml = tmp_path / "addon.xml"
