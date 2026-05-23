@@ -188,7 +188,6 @@ def _build_repository_zip(output_dir, repository_addon_dir):
 def generate_repo(
     output_dir="pages-dist",
     addon_zip=None,
-    release_asset_url=None,
     repository_addon_dir="repo/repository.nzbdav",
 ):
     if not os.path.isdir(repository_addon_dir):
@@ -211,14 +210,11 @@ def generate_repo(
     main_addon_id = "plugin.video.nzbdav"
     if addon_zip:
         release_version = _read_addon_version_from_zip(addon_zip, main_addon_id)
-        metadata_url = release_asset_url or _github_release_asset_url(
-            main_addon_id, release_version
-        )
         addon_xmls.append(
             _read_addon_xml_from_zip(
                 addon_zip,
                 main_addon_id,
-                metadata_url,
+                _github_release_asset_url(main_addon_id, release_version),
             )
         )
     elif os.path.exists(main_addon):
@@ -238,17 +234,7 @@ def generate_repo(
     write_pages_index(output_dir, repo_id, repo_version)
 
 
-def _read_repository_identity(repository_addon_dir):
-    repo_addon = os.path.join(repository_addon_dir, "addon.xml")
-    if not os.path.exists(repo_addon):
-        raise SystemExit(
-            "generate_repo: repository addon.xml not found: {!r}".format(repo_addon)
-        )
-    repo_root = _parse_local_xml(repo_addon).getroot()
-    return repo_root.attrib["id"], repo_root.attrib["version"]
-
-
-def smoke_check_pages(output_dir, repository_addon_dir="repo/repository.nzbdav"):
+def smoke_check_pages(output_dir):
     """Validate the generated Pages artifact before deployment."""
     index_path = os.path.join(output_dir, "index.html")
     addons_xml_path = os.path.join(output_dir, "addons.xml")
@@ -289,38 +275,32 @@ def smoke_check_pages(output_dir, repository_addon_dir="repo/repository.nzbdav")
                 "generate_repo: plugin.video.nzbdav path must point to GitHub Releases"
             )
 
-    repo_id, _repo_version = _read_repository_identity(repository_addon_dir)
     index = open(index_path, "r", encoding="utf-8").read()
     repo_zip_names = [
         name
         for name in os.listdir(output_dir)
-        if name.startswith("{}-".format(repo_id)) and name.endswith(".zip")
+        if name.startswith("repository.nzbdav-") and name.endswith(".zip")
     ]
     if len(repo_zip_names) != 1 or repo_zip_names[0] not in index:
         raise SystemExit("generate_repo: index.html must link one repository zip")
 
     repo_zip_path = os.path.join(output_dir, repo_zip_names[0])
-    repo_addon_xml_member = "{}/addon.xml".format(repo_id)
     with zipfile.ZipFile(repo_zip_path) as zf:
-        if repo_addon_xml_member not in zf.namelist():
+        if "repository.nzbdav/addon.xml" not in zf.namelist():
             raise SystemExit(
-                "generate_repo: repository zip missing {}".format(
-                    repo_addon_xml_member
-                )
+                "generate_repo: repository zip missing repository.nzbdav/addon.xml"
             )
 
-    repo_dir = os.path.join(output_dir, repo_id)
+    repo_dir = os.path.join(output_dir, "repository.nzbdav")
     if os.path.isdir(repo_dir):
         repo_dir_zip_names = [
             name
             for name in os.listdir(repo_dir)
-            if name.startswith("{}-".format(repo_id)) and name.endswith(".zip")
+            if name.startswith("repository.nzbdav-") and name.endswith(".zip")
         ]
         if repo_dir_zip_names != repo_zip_names:
             raise SystemExit(
-                "generate_repo: {} directory must contain one matching repository zip".format(
-                    repo_id
-                )
+                "generate_repo: repository.nzbdav directory must contain one matching repository zip"
             )
 
 
@@ -333,11 +313,6 @@ def main(argv=None):
     )
     parser.add_argument(
         "--addon-zip", default=None, help="Use this addon release zip for metadata"
-    )
-    parser.add_argument(
-        "--release-asset-url",
-        default=None,
-        help="GitHub Release asset URL to write into addon metadata",
     )
     parser.add_argument(
         "--repository-addon-dir",
@@ -353,11 +328,10 @@ def main(argv=None):
     generate_repo(
         output_dir=args.output_dir,
         addon_zip=args.addon_zip,
-        release_asset_url=args.release_asset_url,
         repository_addon_dir=args.repository_addon_dir,
     )
     if args.smoke_check:
-        smoke_check_pages(args.output_dir, repository_addon_dir=args.repository_addon_dir)
+        smoke_check_pages(args.output_dir)
 
 
 if __name__ == "__main__":
