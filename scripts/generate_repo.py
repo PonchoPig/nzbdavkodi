@@ -2,16 +2,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 nzbdav contributors
 
-"""Generate Kodi repository metadata (addons.xml + addons.xml.md5)."""
+"""Generate the GitHub Pages Kodi repository artifact."""
 
 import argparse
 import hashlib
 import os
 import shutil
+import sys
 import xml.etree.ElementTree as ET
 import zipfile
-
-_REPOSITORY_ZIP_ALIAS_VERSIONS = ("1.0.5", "1.0.6", "1.0.7")
 
 
 def _parse_local_xml(path):
@@ -74,7 +73,7 @@ def _set_metadata_path(root, path):
 
 
 def read_addon_xml(path, release_asset_url=None):
-    """Read an addon.xml and return its text content."""
+    """Read an addon.xml and return its repository metadata text."""
     tree = _parse_local_xml(path)
     root = tree.getroot()
     _strip_repo_metadata_news(root)
@@ -102,46 +101,6 @@ def _read_addon_version_from_zip(zip_path, addon_id):
     return _parse_xml_bytes(xml_bytes).getroot().attrib["version"]
 
 
-def _copy_addon_zip(output_dir, addon_id, addon_zip):
-    version = _read_addon_version_from_zip(addon_zip, addon_id)
-    zip_name = "{}-{}.zip".format(addon_id, version)
-    dest_dir = os.path.join(output_dir, addon_id)
-    os.makedirs(dest_dir, exist_ok=True)
-    shutil.copy2(addon_zip, os.path.join(dest_dir, zip_name))
-    shutil.copy2(addon_zip, os.path.join(output_dir, zip_name))
-    return version, dest_dir, zip_name
-
-
-def _root_dir_for_output(output_dir):
-    normalized = os.path.normpath(output_dir)
-    if os.path.basename(normalized) == "zips" and os.path.basename(
-        os.path.dirname(normalized)
-    ) == "repo":
-        return os.path.dirname(os.path.dirname(normalized)) or "."
-    return normalized
-
-
-def _copy_root_zips(output_dir, root_dir):
-    if os.path.abspath(output_dir) == os.path.abspath(root_dir):
-        return
-    os.makedirs(root_dir, exist_ok=True)
-    for name in os.listdir(output_dir):
-        if (
-            name.startswith("repository.")
-            and name.endswith(".zip")
-            and os.path.isfile(os.path.join(output_dir, name))
-        ):
-            shutil.copy2(os.path.join(output_dir, name), os.path.join(root_dir, name))
-
-
-def _copy_root_addon_zip(output_dir, root_dir, addon_zip_name):
-    if not addon_zip_name or os.path.abspath(output_dir) == os.path.abspath(root_dir):
-        return
-    src = os.path.join(output_dir, addon_zip_name)
-    if os.path.isfile(src):
-        shutil.copy2(src, os.path.join(root_dir, addon_zip_name))
-
-
 def _write_html_index(path, links):
     html = "<!doctype html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n</head>\n<body>\n"
     for name in links:
@@ -151,117 +110,84 @@ def _write_html_index(path, links):
         f.write(html)
 
 
-def write_pages_index(
-    output_dir,
-    repo_id="repository.nzbdav",
-    repo_version="1.0.0",
-    addon_zip_names=None,
-):
-    """Write a Kodi-browsable directory listing for the root."""
+def write_pages_index(output_dir, repo_id="repository.nzbdav", repo_version="1.0.0"):
+    """Write a Kodi-browsable Pages root with only the repository zip."""
     index_path = os.path.join(output_dir, "index.html")
     zip_name = "{}-{}.zip".format(repo_id, repo_version)
-    _write_html_index(index_path, [zip_name] + list(addon_zip_names or ()))
+    _write_html_index(index_path, [zip_name])
 
     nojekyll_path = os.path.join(output_dir, ".nojekyll")
     with open(nojekyll_path, "w", encoding="utf-8") as f:
         f.write("")
 
 
-def _copy_legacy_root_metadata(output_dir, root_dir):
-    if os.path.abspath(output_dir) == os.path.abspath(root_dir):
-        return
-    os.makedirs(root_dir, exist_ok=True)
-    for name in ("addons.xml", "addons.xml.md5"):
-        shutil.copy2(os.path.join(output_dir, name), os.path.join(root_dir, name))
-
-
-def _copy_legacy_root_addon_dirs(output_dir, root_dir):
-    if os.path.abspath(output_dir) == os.path.abspath(root_dir):
-        return
-    os.makedirs(root_dir, exist_ok=True)
-    for name in os.listdir(output_dir):
-        source = os.path.join(output_dir, name)
-        if not (os.path.isdir(source) and "." in name):
+def _write_dir_index(dir_path):
+    """Write a simple HTML directory listing that Kodi can parse."""
+    files = sorted(os.listdir(dir_path))
+    links = []
+    for name in files:
+        if name == "index.html":
             continue
-        target = os.path.join(root_dir, name)
-        if os.path.exists(target):
-            shutil.rmtree(target)
-        shutil.copytree(source, target)
+        links.append(name)
+    _write_html_index(os.path.join(dir_path, "index.html"), links)
 
 
-def _copy_addon_artifacts(output_dir, addon_id, main_addon, addon_zip=None):
-    if addon_zip:
-        _version, dest_dir, zip_name = _copy_addon_zip(output_dir, addon_id, addon_zip)
-        with zipfile.ZipFile(addon_zip) as zf:
-            for member in [
-                "{}/addon.xml".format(addon_id),
-                "{}/resources/icon.png".format(addon_id),
-                "{}/resources/fanart.jpg".format(addon_id),
-            ]:
-                try:
-                    data = zf.read(member)
-                except KeyError:
-                    continue
-                rel_path = member.split("/", 1)[1]
-                target = os.path.join(dest_dir, rel_path)
-                os.makedirs(os.path.dirname(target), exist_ok=True)
-                with open(target, "wb") as f:
-                    f.write(data)
-        print("Copied addon release zip + metadata to {}".format(dest_dir))
-        return zip_name
+def _write_addons_xml(output_dir, addon_xmls):
+    addons_xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<addons>\n'
+    for xml_text in addon_xmls:
+        addons_xml += xml_text + "\n"
+    addons_xml += "</addons>\n"
 
-    tree = _parse_local_xml(main_addon)
-    version = tree.getroot().attrib["version"]
-    zip_name = "{}-{}.zip".format(addon_id, version)
-    if os.path.exists(zip_name):
-        dest_dir = os.path.join(output_dir, addon_id)
-        os.makedirs(dest_dir, exist_ok=True)
-        shutil.copy2(zip_name, os.path.join(dest_dir, zip_name))
-        shutil.copy2(zip_name, os.path.join(output_dir, zip_name))
-        shutil.copy2(main_addon, os.path.join(dest_dir, "addon.xml"))
-        for asset in ["resources/icon.png", "resources/fanart.jpg"]:
-            src = os.path.join(os.path.dirname(main_addon), asset)
-            if os.path.exists(src):
-                asset_dest = os.path.join(dest_dir, asset)
-                os.makedirs(os.path.dirname(asset_dest), exist_ok=True)
-                shutil.copy2(src, asset_dest)
-        print("Copied addon zip + metadata to {}".format(dest_dir))
-        return zip_name
-    return None
+    addons_xml_path = os.path.join(output_dir, "addons.xml")
+    with open(addons_xml_path, "w", encoding="utf-8") as f:
+        f.write(addons_xml)
 
+    md5 = hashlib.md5(  # noqa: S324  # not used for security
+        addons_xml.encode("utf-8")
+    ).hexdigest()
+    with open(os.path.join(output_dir, "addons.xml.md5"), "w", encoding="utf-8") as f:
+        f.write(md5)
 
-def _copy_legacy_addon_zips(output_dir, addon_id, legacy_addon_zip_dir=None):
-    if not legacy_addon_zip_dir:
-        return
-    if not os.path.isdir(legacy_addon_zip_dir):
-        raise SystemExit(
-            "generate_repo: legacy addon zip directory not found: {!r}".format(
-                legacy_addon_zip_dir
-            )
+    print(
+        "Generated {} ({} addons, md5: {})".format(
+            addons_xml_path, len(addon_xmls), md5
         )
-    for name in sorted(os.listdir(legacy_addon_zip_dir)):
-        zip_path = os.path.join(legacy_addon_zip_dir, name)
-        if not os.path.isfile(zip_path) or not name.endswith(".zip"):
-            continue
-        try:
-            _version, _dest_dir, zip_name = _copy_addon_zip(
-                output_dir, addon_id, zip_path
-            )
-        except (KeyError, ET.ParseError, zipfile.BadZipFile) as exc:
-            raise SystemExit(
-                "generate_repo: failed to read legacy addon zip {!r}: {}".format(
-                    zip_path, exc
-                )
-            )
-        print("Copied legacy addon zip {}".format(zip_name))
+    )
+
+
+def _build_repository_zip(output_dir, repository_addon_dir):
+    repo_addon = os.path.join(repository_addon_dir, "addon.xml")
+    repo_tree = _parse_local_xml(repo_addon)
+    repo_root = repo_tree.getroot()
+    repo_id = repo_root.attrib["id"]
+    repo_version = repo_root.attrib["version"]
+    repo_out = os.path.join(output_dir, repo_id)
+    os.makedirs(repo_out, exist_ok=True)
+
+    for name in ("addon.xml", "icon.png"):
+        source = os.path.join(repository_addon_dir, name)
+        if os.path.exists(source):
+            shutil.copy2(source, os.path.join(repo_out, name))
+
+    repo_zip_name = "{}-{}.zip".format(repo_id, repo_version)
+    repo_zip_path = os.path.join(repo_out, repo_zip_name)
+    with zipfile.ZipFile(repo_zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for root, _dirs, files in os.walk(repository_addon_dir):
+            for filename in files:
+                filepath = os.path.join(root, filename)
+                arcname = os.path.relpath(
+                    filepath, os.path.dirname(repository_addon_dir)
+                ).replace(os.sep, "/")
+                zf.write(filepath, arcname)
+
+    shutil.copy2(repo_zip_path, os.path.join(output_dir, repo_zip_name))
+    print("Built repository addon zip at {}".format(repo_zip_path))
+    return repo_id, repo_version
 
 
 def generate_repo(
-    output_dir="repo/zips",
+    output_dir="pages-dist",
     addon_zip=None,
-    legacy_addon_zip_dir=None,
-    repo_zip_alias_versions=None,
-    legacy_root_metadata=False,
     repository_addon_dir="repo/repository.nzbdav",
 ):
     if not os.path.isdir(repository_addon_dir):
@@ -271,11 +197,15 @@ def generate_repo(
             )
         )
 
+    repo_addon = os.path.join(repository_addon_dir, "addon.xml")
+    if not os.path.exists(repo_addon):
+        raise SystemExit(
+            "generate_repo: repository addon.xml not found: {!r}".format(repo_addon)
+        )
+
     os.makedirs(output_dir, exist_ok=True)
-    root_dir = _root_dir_for_output(output_dir)
 
     addon_xmls = []
-
     main_addon = "repo/plugin.video.nzbdav/addon.xml"
     main_addon_id = "plugin.video.nzbdav"
     if addon_zip:
@@ -296,146 +226,113 @@ def generate_repo(
             )
         )
 
-    # Collect addon.xml from the repository addon
-    repo_addon = os.path.join(repository_addon_dir, "addon.xml")
-    if not os.path.exists(repo_addon):
-        raise SystemExit(
-            "generate_repo: repository addon.xml not found: {!r}".format(repo_addon)
-        )
     addon_xmls.append(read_addon_xml(repo_addon))
+    _write_addons_xml(output_dir, addon_xmls)
 
-    # Write addons.xml
-    addons_xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<addons>\n'
-    for xml_text in addon_xmls:
-        addons_xml += xml_text + "\n"
-    addons_xml += "</addons>\n"
+    repo_id, repo_version = _build_repository_zip(output_dir, repository_addon_dir)
+    _write_dir_index(os.path.join(output_dir, repo_id))
+    write_pages_index(output_dir, repo_id, repo_version)
 
+
+def smoke_check_pages(output_dir):
+    """Validate the generated Pages artifact before deployment."""
+    index_path = os.path.join(output_dir, "index.html")
     addons_xml_path = os.path.join(output_dir, "addons.xml")
-    with open(addons_xml_path, "w", encoding="utf-8") as f:
-        f.write(addons_xml)
+    md5_path = os.path.join(output_dir, "addons.xml.md5")
 
-    # Write addons.xml.md5
-    md5 = hashlib.md5(
-        addons_xml.encode("utf-8")
-    ).hexdigest()  # noqa: S324  # not used for security
-    with open(os.path.join(output_dir, "addons.xml.md5"), "w") as f:
-        f.write(md5)
-    with open(os.path.join(output_dir, "addons.xml.md5.txt"), "w") as f:
-        f.write(md5)
+    if not os.path.isfile(index_path):
+        raise SystemExit("generate_repo: missing Pages index.html")
+    if not os.path.isfile(addons_xml_path):
+        raise SystemExit("generate_repo: missing addons.xml")
+    if not os.path.isfile(md5_path):
+        raise SystemExit("generate_repo: missing addons.xml.md5")
 
-    print(
-        "Generated {} ({} addons, md5: {})".format(
-            addons_xml_path, len(addon_xmls), md5
+    md5 = hashlib.md5(  # noqa: S324  # not used for security
+        open(addons_xml_path, "rb").read()
+    ).hexdigest()
+    if open(md5_path, "r", encoding="utf-8").read() != md5:
+        raise SystemExit("generate_repo: addons.xml.md5 does not match addons.xml")
+
+    addon_zips = []
+    for root, _dirs, files in os.walk(output_dir):
+        for name in files:
+            if name.startswith("plugin.video.nzbdav-") and name.endswith(".zip"):
+                addon_zips.append(os.path.join(root, name))
+    if addon_zips:
+        raise SystemExit(
+            "generate_repo: Pages artifact must not contain plugin.video.nzbdav zip files"
         )
-    )
 
-    addon_zip_name = _copy_addon_artifacts(
-        output_dir, main_addon_id, main_addon, addon_zip
-    )
-    _copy_legacy_addon_zips(output_dir, main_addon_id, legacy_addon_zip_dir)
+    tree = _parse_local_xml(addons_xml_path)
+    addon = tree.getroot().find("./addon[@id='plugin.video.nzbdav']")
+    if addon is not None:
+        metadata = addon.find("./extension[@point='xbmc.addon.metadata']")
+        path = metadata.findtext("path") if metadata is not None else ""
+        if not path.startswith(
+            "https://github.com/PonchoPig/nzbdavkodi/releases/download/"
+        ):
+            raise SystemExit(
+                "generate_repo: plugin.video.nzbdav path must point to GitHub Releases"
+            )
 
-    # Build repository addon zip and copy into output
-    repo_dir = repository_addon_dir
-    repo_tree = _parse_local_xml(repo_addon)
-    repo_root = repo_tree.getroot()
-    repo_id = repo_root.attrib["id"]
-    repo_version = repo_root.attrib["version"]
-    repo_out = os.path.join(output_dir, repo_id)
-    os.makedirs(repo_out, exist_ok=True)
-    repo_zip_name = "{}-{}.zip".format(repo_id, repo_version)
-    repo_zip_path = os.path.join(repo_out, repo_zip_name)
-    with zipfile.ZipFile(repo_zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for root, dirs, files in os.walk(repo_dir):
-            for f in files:
-                filepath = os.path.join(root, f)
-                arcname = os.path.relpath(filepath, os.path.dirname(repo_dir)).replace(
-                    os.sep, "/"
-                )
-                zf.write(filepath, arcname)
-    shutil.copy2(repo_addon, os.path.join(repo_out, "addon.xml"))
-    repo_icon = os.path.join(repo_dir, "icon.png")
-    if os.path.exists(repo_icon):
-        shutil.copy2(repo_icon, os.path.join(repo_out, "icon.png"))
-    # Also copy repo zip to the zips root for raw GitHub hosting.
-    root_repo_zip = os.path.join(output_dir, repo_zip_name)
-    shutil.copy2(repo_zip_path, root_repo_zip)
-    if repo_zip_alias_versions is None:
-        repo_zip_alias_versions = _REPOSITORY_ZIP_ALIAS_VERSIONS
-    for alias_version in repo_zip_alias_versions:
-        if alias_version == repo_version:
-            continue
-        alias_name = "{}-{}.zip".format(repo_id, alias_version)
-        shutil.copy2(repo_zip_path, os.path.join(repo_out, alias_name))
-        shutil.copy2(repo_zip_path, os.path.join(output_dir, alias_name))
-    print("Built repository addon zip at {}".format(repo_zip_path))
+    index = open(index_path, "r", encoding="utf-8").read()
+    repo_zip_names = [
+        name
+        for name in os.listdir(output_dir)
+        if name.startswith("repository.nzbdav-") and name.endswith(".zip")
+    ]
+    if len(repo_zip_names) != 1 or repo_zip_names[0] not in index:
+        raise SystemExit("generate_repo: index.html must link one repository zip")
 
-    # Generate directory listing index.html for each subdirectory so Kodi's
-    # file manager can browse the repo via GitHub Pages.
-    for subdir in os.listdir(output_dir):
-        subdir_path = os.path.join(output_dir, subdir)
-        if os.path.isdir(subdir_path):
-            _write_dir_index(subdir_path)
+    repo_zip_path = os.path.join(output_dir, repo_zip_names[0])
+    with zipfile.ZipFile(repo_zip_path) as zf:
+        if "repository.nzbdav/addon.xml" not in zf.namelist():
+            raise SystemExit(
+                "generate_repo: repository zip missing repository.nzbdav/addon.xml"
+            )
 
-    _copy_root_zips(output_dir, root_dir)
-    _copy_root_addon_zip(output_dir, root_dir, addon_zip_name)
-    if legacy_root_metadata:
-        _copy_legacy_root_metadata(output_dir, root_dir)
-        _copy_legacy_root_addon_dirs(output_dir, root_dir)
-    write_pages_index(
-        root_dir,
-        repo_id,
-        repo_version,
-        addon_zip_names=[addon_zip_name] if addon_zip_name else None,
-    )
+    repo_dir = os.path.join(output_dir, "repository.nzbdav")
+    if os.path.isdir(repo_dir):
+        repo_dir_zip_names = [
+            name
+            for name in os.listdir(repo_dir)
+            if name.startswith("repository.nzbdav-") and name.endswith(".zip")
+        ]
+        if repo_dir_zip_names != repo_zip_names:
+            raise SystemExit(
+                "generate_repo: repository.nzbdav directory must contain one matching repository zip"
+            )
 
 
-def _write_dir_index(dir_path):
-    """Write a simple HTML directory listing that Kodi can parse."""
-    files = sorted(os.listdir(dir_path))
-    links = []
-    for name in files:
-        if name == "index.html":
-            continue
-        links.append(name)
-    _write_html_index(os.path.join(dir_path, "index.html"), links)
-
-
-if __name__ == "__main__":
+def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--output-dir", default="repo/zips", help="Output directory for repo"
+        "--output-dir",
+        default="pages-dist",
+        help="Output directory for Pages artifact",
     )
     parser.add_argument(
-        "--addon-zip",
-        default=None,
-        help=(
-            "Use this addon release zip instead of rebuilding metadata from the "
-            "worktree"
-        ),
-    )
-    parser.add_argument(
-        "--legacy-addon-zip-dir",
-        default=None,
-        help="Directory of older addon release zips to keep published",
-    )
-    parser.add_argument(
-        "--legacy-root-metadata",
-        action="store_true",
-        help=(
-            "Also publish addons.xml and addons.xml.md5 at the Pages root for "
-            "repository addons installed before the raw-GitHub migration"
-        ),
+        "--addon-zip", default=None, help="Use this addon release zip for metadata"
     )
     parser.add_argument(
         "--repository-addon-dir",
         default="repo/repository.nzbdav",
         help="Repository addon directory to include and package",
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--smoke-check",
+        action="store_true",
+        help="Validate generated Pages artifact after generation",
+    )
+    args = parser.parse_args(argv)
     generate_repo(
         output_dir=args.output_dir,
         addon_zip=args.addon_zip,
-        legacy_addon_zip_dir=args.legacy_addon_zip_dir,
-        legacy_root_metadata=args.legacy_root_metadata,
         repository_addon_dir=args.repository_addon_dir,
     )
+    if args.smoke_check:
+        smoke_check_pages(args.output_dir)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
