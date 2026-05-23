@@ -177,6 +177,35 @@ def test_generate_repo_can_publish_release_zip_instead_of_worktree_addon(
     assert not (output_dir / "plugin.video.nzbdav").exists()
 
 
+def test_generate_repo_uses_explicit_release_asset_url(tmp_path, monkeypatch):
+    module = _load_generate_repo_module()
+    monkeypatch.chdir(REPO_ROOT)
+    release_zip = tmp_path / "plugin.video.nzbdav-1.0.3.zip"
+    release_addon_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="plugin.video.nzbdav" name="NZB-DAV" version="1.0.3" />
+"""
+    with zipfile.ZipFile(release_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("plugin.video.nzbdav/addon.xml", release_addon_xml)
+
+    output_dir = tmp_path / "pages"
+    release_asset_url = (
+        "https://github.com/PonchoPig/nzbdavkodi/releases/download/"
+        "1.0.3/plugin.video.nzbdav-1.0.3.zip"
+    )
+    module.generate_repo(
+        output_dir=str(output_dir),
+        addon_zip=str(release_zip),
+        release_asset_url=release_asset_url,
+    )
+
+    tree = ET.parse(output_dir / "addons.xml")
+    addon = tree.find("./addon[@id='plugin.video.nzbdav']")
+    assert addon is not None
+    metadata = addon.find("./extension[@point='xbmc.addon.metadata']")
+    assert metadata is not None
+    assert metadata.findtext("path") == release_asset_url
+
+
 def test_generate_repo_writes_release_path_to_all_metadata_extensions(
     tmp_path, monkeypatch
 ):
