@@ -308,6 +308,22 @@ def test_generate_repo_smoke_check_rejects_copied_addon_zip(tmp_path, monkeypatc
     )
 
 
+def test_generate_repo_smoke_check_rejects_empty_sha256_checksum(tmp_path, monkeypatch):
+    module = _load_generate_repo_module()
+    monkeypatch.chdir(REPO_ROOT)
+
+    output_dir = tmp_path / "pages"
+    module.generate_repo(output_dir=str(output_dir))
+    (output_dir / "addons.xml.gz.sha256").write_text("", encoding="utf-8")
+
+    with pytest.raises(SystemExit) as excinfo:
+        module.smoke_check_pages(str(output_dir))
+
+    assert str(excinfo.value) == (
+        "generate_repo: addons.xml.gz.sha256 does not match addons.xml.gz"
+    )
+
+
 def test_generate_repo_smoke_check_rejects_absolute_addon_metadata_path(
     tmp_path, monkeypatch
 ):
