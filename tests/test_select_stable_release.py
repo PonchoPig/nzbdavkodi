@@ -136,6 +136,19 @@ def test_rejects_asset_name_that_does_not_match_release_tag():
     )
 
 
+def test_rejects_matching_asset_without_download_url():
+    module = _load_select_stable_release_module()
+    assets = [{"name": "plugin.video.nzbdav-1.0.0.zip"}]
+
+    with pytest.raises(SystemExit) as excinfo:
+        module.select_stable_release([_release("v1.0.0", assets=assets)])
+
+    assert str(excinfo.value) == (
+        "Stable release v1.0.0 asset plugin.video.nzbdav-1.0.0.zip must include "
+        "a download URL"
+    )
+
+
 def test_raises_when_no_stable_release_exists():
     module = _load_select_stable_release_module()
 
