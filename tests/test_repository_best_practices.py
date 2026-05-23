@@ -36,6 +36,14 @@ def test_repository_addon_uses_pages_metadata_urls():
     assert repo_dir.findtext("datadir") == "{}/".format(repo_base)
 
 
+def test_repository_addon_depends_on_kodi_addon_api():
+    addon_xml = REPO_ADDON_DIR / "addon.xml"
+    root = ET.parse(addon_xml).getroot()
+    imports = root.findall("./requires/import")
+
+    assert [item.get("addon") for item in imports] == ["xbmc.addon"]
+
+
 def test_duplicate_releases_repository_addon_is_removed():
     assert not (REPO_ROOT / "repo" / "repository.nzbdav.releases").exists()
 
