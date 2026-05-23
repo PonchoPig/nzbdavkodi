@@ -75,13 +75,11 @@ jobs:
           done
 
       - name: Generate Pages repository
-        run: |
-          rm -rf pages-dist
-          python3 scripts/generate_repo.py \
-            --output-dir pages-dist \
-            --addon-zip release-addon.zip \
-            --release-asset-url "${{ steps.stable_release.outputs.download_url }}" \
-            --smoke-check
+        run: >-
+          python3 scripts/generate_repo.py
+          --output-dir pages-dist
+          --addon-zip release-addon.zip
+          --smoke-check
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

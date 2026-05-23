@@ -101,17 +101,10 @@ def select_stable_release(releases):
                 tag, expected_name, actual_name
             )
         )
-    download_url = _asset_download_url(asset)
-    if not download_url:
-        raise SystemExit(
-            "Stable release {} asset {} must include a download URL".format(
-                tag, actual_name
-            )
-        )
     return {
         "tagName": tag,
         "assetName": actual_name,
-        "downloadUrl": download_url,
+        "downloadUrl": _asset_download_url(asset),
     }
 
 
