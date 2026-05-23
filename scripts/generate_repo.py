@@ -54,6 +54,17 @@ def _addon_zip_relative_path(addon_id, version):
     return "{}/{}".format(addon_id, zip_name)
 
 
+def _is_repository_relative_path(path):
+    if urlparse(path).scheme or os.path.isabs(path):
+        return False
+    if os.pardir in path.split(os.sep):
+        return False
+    normalized = os.path.normpath(path)
+    if normalized == os.pardir or normalized.startswith(os.pardir + os.sep):
+        return False
+    return True
+
+
 def _copy_addon_zip_for_pages(output_dir, addon_zip, addon_id, version):
     relative_path = _addon_zip_relative_path(addon_id, version)
     output_path = os.path.join(output_dir, relative_path)
@@ -87,25 +98,25 @@ def _set_metadata_path(root, path):
     path_element.text = path
 
 
-def read_addon_xml(path, release_asset_url=None):
+def read_addon_xml(path, metadata_path=None):
     """Read an addon.xml and return its repository metadata text."""
     tree = _parse_local_xml(path)
     root = tree.getroot()
     _strip_repo_metadata_news(root)
-    if release_asset_url:
-        _set_metadata_path(root, release_asset_url)
+    if metadata_path:
+        _set_metadata_path(root, metadata_path)
     return ET.tostring(root, encoding="unicode")
 
 
-def _read_addon_xml_from_zip(zip_path, addon_id, release_asset_url=None):
+def _read_addon_xml_from_zip(zip_path, addon_id, metadata_path=None):
     addon_xml_name = "{}/addon.xml".format(addon_id)
     with zipfile.ZipFile(zip_path) as zf:
         xml_bytes = zf.read(addon_xml_name)
     tree = _parse_xml_bytes(xml_bytes)
     root = tree.getroot()
     _strip_repo_metadata_news(root)
-    if release_asset_url:
-        _set_metadata_path(root, release_asset_url)
+    if metadata_path:
+        _set_metadata_path(root, metadata_path)
     return ET.tostring(root, encoding="unicode")
 
 
@@ -206,6 +217,17 @@ def generate_repo(
     release_asset_url=None,
     repository_addon_dir="repo/repository.nzbdav",
 ):
+    """Generate Pages metadata.
+
+    release_asset_url is deprecated and ignored; addon zips are copied into
+    the repository datadir and referenced by repository-relative paths.
+    """
+    if release_asset_url:
+        print(
+            "generate_repo: release_asset_url is deprecated and ignored",
+            file=sys.stderr,
+        )
+
     if not os.path.isdir(repository_addon_dir):
         raise SystemExit(
             "generate_repo: repository addon directory not found: {!r}".format(
@@ -300,7 +322,7 @@ def smoke_check_pages(output_dir, repository_addon_dir="repo/repository.nzbdav")
     if addon is not None:
         metadata = addon.find("./extension[@point='xbmc.addon.metadata']")
         path = metadata.findtext("path") if metadata is not None else ""
-        if path and urlparse(path).scheme:
+        if path and not _is_repository_relative_path(path):
             raise SystemExit(
                 "generate_repo: plugin.video.nzbdav path must be relative to repository datadir"
             )
@@ -367,7 +389,7 @@ def main(argv=None):
     parser.add_argument(
         "--release-asset-url",
         default=None,
-        help="GitHub Release asset URL to write into addon metadata",
+        help="Deprecated/no-op; addon zips are copied into the Pages datadir",
     )
     parser.add_argument(
         "--repository-addon-dir",

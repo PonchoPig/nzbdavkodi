@@ -178,7 +178,7 @@ def test_generate_repo_can_publish_release_zip_instead_of_worktree_addon(
 
 
 def test_generate_repo_uses_kodi_relative_addon_path_with_explicit_release_asset_url(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, capsys
 ):
     module = _load_generate_repo_module()
     monkeypatch.chdir(REPO_ROOT)
@@ -199,6 +199,7 @@ def test_generate_repo_uses_kodi_relative_addon_path_with_explicit_release_asset
         addon_zip=str(release_zip),
         release_asset_url=release_asset_url,
     )
+    captured = capsys.readouterr()
 
     tree = ET.parse(output_dir / "addons.xml")
     addon = tree.find("./addon[@id='plugin.video.nzbdav']")
@@ -211,6 +212,7 @@ def test_generate_repo_uses_kodi_relative_addon_path_with_explicit_release_asset
     assert (
         output_dir / "plugin.video.nzbdav" / "plugin.video.nzbdav-1.0.3.zip"
     ).read_bytes() == release_zip.read_bytes()
+    assert "release_asset_url is deprecated and ignored" in captured.err
 
 
 def test_generate_repo_writes_release_path_to_all_metadata_extensions(
@@ -293,6 +295,38 @@ def test_generate_repo_smoke_check_rejects_absolute_addon_metadata_path(
         "https://github.com/PonchoPig/nzbdavkodi/releases/download/"
         "v9.9.9/plugin.video.nzbdav-9.9.9.zip"
     )
+    tree.write(output_dir / "addons.xml", encoding="utf-8", xml_declaration=True)
+    md5 = module.hashlib.md5((output_dir / "addons.xml").read_bytes()).hexdigest()
+    (output_dir / "addons.xml.md5").write_text(md5, encoding="utf-8")
+
+    with pytest.raises(SystemExit) as excinfo:
+        module.smoke_check_pages(str(output_dir))
+
+    assert str(excinfo.value) == (
+        "generate_repo: plugin.video.nzbdav path must be relative to repository datadir"
+    )
+
+
+@pytest.mark.parametrize(
+    "metadata_path",
+    [
+        "/plugin.video.nzbdav/plugin.video.nzbdav-1.0.3.zip",
+        "../plugin.video.nzbdav-1.0.3.zip",
+        "plugin.video.nzbdav/../plugin.video.nzbdav-1.0.3.zip",
+    ],
+)
+def test_generate_repo_smoke_check_rejects_non_repository_relative_addon_metadata_path(
+    tmp_path, monkeypatch, metadata_path
+):
+    module = _load_generate_repo_module()
+    monkeypatch.chdir(REPO_ROOT)
+
+    output_dir = tmp_path / "pages"
+    module.generate_repo(output_dir=str(output_dir))
+    tree = ET.parse(output_dir / "addons.xml")
+    addon = tree.find("./addon[@id='plugin.video.nzbdav']")
+    metadata = addon.find("./extension[@point='xbmc.addon.metadata']")
+    metadata.find("path").text = metadata_path
     tree.write(output_dir / "addons.xml", encoding="utf-8", xml_declaration=True)
     md5 = module.hashlib.md5((output_dir / "addons.xml").read_bytes()).hexdigest()
     (output_dir / "addons.xml.md5").write_text(md5, encoding="utf-8")
