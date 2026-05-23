@@ -63,6 +63,27 @@ def test_generate_repo_writes_minimal_pages_root_files(tmp_path, monkeypatch):
     assert not list(output_dir.glob("plugin.video.nzbdav-*.zip"))
 
 
+def test_generate_repo_pages_root_index_lists_repository_metadata_files(
+    tmp_path, monkeypatch
+):
+    module = _load_generate_repo_module()
+    monkeypatch.chdir(REPO_ROOT)
+
+    output_dir = tmp_path / "pages"
+    module.generate_repo(output_dir=str(output_dir))
+
+    contents = (output_dir / "index.html").read_text(encoding="utf-8")
+    expected_links = [
+        "addons.xml",
+        "addons.xml.gz",
+        "addons.xml.gz.sha256",
+        "repository.nzbdav-1.1.4.zip",
+        "repository.nzbdav-1.1.4.zip.sha256",
+    ]
+    for link in expected_links:
+        assert '<a href="{0}">{0}</a>'.format(link) in contents
+
+
 def test_generate_repo_html_indexes_use_standards_doctype(tmp_path, monkeypatch):
     module = _load_generate_repo_module()
     monkeypatch.chdir(REPO_ROOT)
@@ -355,6 +376,30 @@ def test_generate_repo_smoke_check_rejects_empty_sha256_checksum(tmp_path, monke
 
     assert str(excinfo.value) == (
         "generate_repo: addons.xml.gz.sha256 does not match addons.xml.gz"
+    )
+
+
+def test_generate_repo_smoke_check_rejects_index_missing_root_checksum_link(
+    tmp_path, monkeypatch
+):
+    module = _load_generate_repo_module()
+    monkeypatch.chdir(REPO_ROOT)
+
+    output_dir = tmp_path / "pages"
+    module.generate_repo(output_dir=str(output_dir))
+    index_path = output_dir / "index.html"
+    index_path.write_text(
+        index_path.read_text(encoding="utf-8").replace(
+            '<a href="addons.xml.gz.sha256">addons.xml.gz.sha256</a><br>\n', ""
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit) as excinfo:
+        module.smoke_check_pages(str(output_dir))
+
+    assert str(excinfo.value) == (
+        "generate_repo: index.html must link addons.xml.gz.sha256"
     )
 
 

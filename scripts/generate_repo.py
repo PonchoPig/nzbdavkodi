@@ -159,10 +159,19 @@ def _write_html_index(path, links):
 
 
 def write_pages_index(output_dir, repo_id="repository.nzbdav", repo_version="1.0.0"):
-    """Write a Kodi-browsable Pages root with only the repository zip."""
+    """Write a Kodi-browsable Pages root for repository installation."""
     index_path = os.path.join(output_dir, "index.html")
     zip_name = "{}-{}.zip".format(repo_id, repo_version)
-    _write_html_index(index_path, [zip_name])
+    links = [
+        name
+        for name in sorted(os.listdir(output_dir))
+        if os.path.isfile(os.path.join(output_dir, name))
+        and name not in (".nojekyll", "index.html")
+        and not (name.startswith("plugin.video.nzbdav-") and name.endswith(".zip"))
+    ]
+    if zip_name not in links:
+        links.append(zip_name)
+    _write_html_index(index_path, links)
 
     nojekyll_path = os.path.join(output_dir, ".nojekyll")
     with open(nojekyll_path, "w", encoding="utf-8") as f:
@@ -382,6 +391,15 @@ def smoke_check_pages(output_dir, repository_addon_dir="repo/repository.nzbdav")
 
     repo_zip_path = os.path.join(output_dir, repo_zip_names[0])
     _verify_sha256_file(repo_zip_path)
+    expected_index_links = [
+        "addons.xml",
+        "addons.xml.gz",
+        "addons.xml.gz.sha256",
+        repo_zip_names[0] + ".sha256",
+    ]
+    for name in expected_index_links:
+        if '<a href="{0}">{0}</a>'.format(name) not in index:
+            raise SystemExit("generate_repo: index.html must link {}".format(name))
     repo_addon_xml_member = "{}/addon.xml".format(repo_id)
     with zipfile.ZipFile(repo_zip_path) as zf:
         if repo_addon_xml_member not in zf.namelist():
